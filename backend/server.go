@@ -53,6 +53,11 @@ func handleLookup(budget, athBudget time.Duration, workers, shards int) http.Han
 			defer bundleWG.Done()
 			send(safetyCheck(withAgent(ctx, "safety", send), mint))
 		}()
+		bundleWG.Add(1)
+		go func() {
+			defer bundleWG.Done()
+			send(exitCheck(ctx, mint))
+		}()
 
 		// Bundle and sniper checks start together and share one fetch of the launch transactions.
 		launch := newLaunchFetcher(withAgent(ctx, "bundle", send), mint)
@@ -78,6 +83,8 @@ func handleLookup(budget, athBudget time.Duration, workers, shards int) http.Han
 			}
 			send(event)
 		}()
+
+		send(volumeCheck(self))
 
 		bundleWG.Add(1)
 		go func() {
@@ -108,6 +115,12 @@ func handleLookup(budget, athBudget time.Duration, workers, shards int) http.Han
 		}
 		send(map[string]any{"stage": "dev", "mint": mint, "symbol": self.Symbol, "dev": dev, "source": source,
 			"devMints": self.Audit.DevMints, "devMigrations": self.Audit.DevMigrations, "ms": time.Since(start).Milliseconds()})
+
+		bundleWG.Add(1)
+		go func() {
+			defer bundleWG.Done()
+			send(feeCheck(ctx, dev))
+		}()
 
 		devCtx := withAgent(ctx, "dev", send)
 		scanCtx, cancelScan := context.WithTimeout(devCtx, budget)

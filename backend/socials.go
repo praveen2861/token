@@ -220,15 +220,31 @@ func socialsCheck(ctx context.Context, mint string, self asset) map[string]any {
 	event := map[string]any{"stage": "socials", "twitter": links["twitter"], "website": links["website"], "telegram": links["telegram"], "linksComplete": linksComplete}
 
 	var wg sync.WaitGroup
+	var xResult, siteResult map[string]any
 	if link := links["twitter"]; link != "" {
 		report(ctx, "Reading X stats…", 1, 2)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			event["x"] = xStats(ctx, link)
+			stats := xStats(ctx, link)
+			addAccountDetails(ctx, stats)
+			xResult = stats
+		}()
+	}
+	if link := links["website"]; link != "" {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			siteResult = websiteAge(ctx, link)
 		}()
 	}
 	wg.Wait()
+	if xResult != nil {
+		event["x"] = xResult
+	}
+	if siteResult != nil {
+		event["site"] = siteResult
+	}
 	event["ms"] = fmt.Sprint(time.Since(start).Milliseconds())
 	return event
 }

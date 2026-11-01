@@ -33,22 +33,24 @@ var (
 )
 
 type asset struct {
-	ID           string  `json:"id"`
-	Name         string  `json:"name"`
-	Twitter      string  `json:"twitter"`
-	Website      string  `json:"website"`
-	Telegram     string  `json:"telegram"`
-	Symbol       string  `json:"symbol"`
-	Dev          string  `json:"dev"`
-	Launchpad    string  `json:"launchpad"`
-	CreatedAt    string  `json:"createdAt"`
-	Mcap         float64 `json:"mcap"`
-	Graduated    string  `json:"graduatedPool"`
-	HolderCount  int     `json:"holderCount"`
-	Liquidity    float64 `json:"liquidity"`
-	BondingCurve float64 `json:"bondingCurve"`
-	FDV          float64 `json:"fdv"`
-	Audit        struct {
+	ID                string     `json:"id"`
+	Name              string     `json:"name"`
+	Twitter           string     `json:"twitter"`
+	Website           string     `json:"website"`
+	Telegram          string     `json:"telegram"`
+	Symbol            string     `json:"symbol"`
+	Dev               string     `json:"dev"`
+	Launchpad         string     `json:"launchpad"`
+	CreatedAt         string     `json:"createdAt"`
+	Mcap              float64    `json:"mcap"`
+	Graduated         string     `json:"graduatedPool"`
+	HolderCount       int        `json:"holderCount"`
+	Stats24h          tradeStats `json:"stats24h"`
+	OrganicScoreLabel string     `json:"organicScoreLabel"`
+	Liquidity         float64    `json:"liquidity"`
+	BondingCurve      float64    `json:"bondingCurve"`
+	FDV               float64    `json:"fdv"`
+	Audit             struct {
 		DevMints      int `json:"devMints"`
 		DevMigrations int `json:"devMigrations"`
 	} `json:"audit"`

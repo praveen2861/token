@@ -265,7 +265,8 @@ h1{margin-bottom:4px!important}
 .donate-box{position:absolute;z-index:30;top:100%;right:0;width:min(400px,calc(100vw - 32px));margin-top:8px;padding:14px;background:var(--panel);border:2px solid #ff8fb1;box-shadow:4px 4px 0 #000}
 .donate-box h2{margin:0;font:400 16px/1.3 Silkscreen,monospace;color:#ff8fb1}
 .donate-box p{margin:6px 0 10px;font-size:13px;color:var(--dim)}
-.wallet-box{padding:8px;border:2px solid var(--line);font:12px ui-monospace,Consolas,monospace;overflow-wrap:anywhere}
+.wallet-box{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 6px 6px 10px;border:2px solid var(--line);font:12px ui-monospace,Consolas,monospace}
+.wallet-box #quickCopy{flex:none;background:#ff8fb1;border-color:#ff8fb1;color:#16130f}
 .amounts{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px;margin-top:10px}
 .amounts a,.amounts button{padding:6px 10px;border:2px solid var(--line);background:transparent;color:var(--text);font:600 12px "IBM Plex Mono",monospace;text-decoration:none;cursor:pointer}
 .amounts a:hover,.amounts button:hover{border-color:#ff8fb1}
@@ -322,6 +323,20 @@ h1{margin-bottom:4px!important}
 @media (max-width:460px){.board{margin:12px -16px 0;padding:10px 16px}}
 @media (max-width:620px){.topbar{flex-wrap:wrap}.donate{margin-left:0;width:100%}.donate .beg{margin-left:auto}}
 @media (prefers-reduced-motion:reduce){.cabinet,.pod,.board-track i{transition:none;animation:none!important}.cabinet.running::before,.pod.working i{animation:none}}
+/* Scrollbars: thin, square, in each cabinet's own color. */
+html{scrollbar-color:var(--line) var(--bg)}
+.cabinet *{scrollbar-width:thin;scrollbar-color:var(--c) transparent}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--c,var(--line));border:2px solid var(--panel);background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:var(--text);background-clip:padding-box}
+::-webkit-scrollbar-corner{background:transparent}
+/* Long lists scroll inside their cabinet, headers stay visible, and the page doesn't jump at the ends. */
+#same,#results{max-height:560px;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.sniper-list{overscroll-behavior:contain;padding-right:6px;scrollbar-gutter:stable}
+.cabinet thead th{position:sticky;top:0;z-index:1;background:var(--panel)}
+.cabinet table{border-collapse:separate;border-spacing:0}
+@media (max-width:620px){#same,#results{max-height:none;overflow:visible}.cabinet thead th{position:static}}
 [hidden]{display:none}
 </style>
 <script src="config.js"></script>
@@ -332,7 +347,6 @@ h1{margin-bottom:4px!important}
   <span class="logo" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="7" y="1" width="2" height="2" fill="#f2e8d5"/><rect x="2" y="3" width="12" height="10" fill="#ffcf40"/><rect x="1" y="6" width="1" height="4" fill="#ffcf40"/><rect x="14" y="6" width="1" height="4" fill="#ffcf40"/><rect x="4" y="5" width="8" height="6" fill="#16130f"/><rect x="5" y="6" width="2" height="2" fill="#f2e8d5"/><rect x="9" y="6" width="2" height="2" fill="#f2e8d5"/><rect x="6" y="9" width="4" height="1" fill="#14f195"/><rect x="2" y="14" width="3" height="1" fill="#ffcf40"/><rect x="11" y="14" width="3" height="1" fill="#ffcf40"/></svg></span>
   <div><h1>Token Lab</h1><p class="tagline">The fastest bots on Solana</p></div>
   <div class="donate">
-    <button type="button" class="sbtn" id="quickCopy" title="Copy the donation wallet">Copy CA</button>
     <button type="button" class="beg" id="begBtn" aria-expanded="false" aria-controls="donateBox" aria-label="Donate to the dev">
       <svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><g class="beg-body"><rect x="2" y="2" width="12" height="9" fill="#c8282d"/><rect x="3" y="4" width="4" height="4" fill="#16130f"/><rect x="9" y="4" width="4" height="4" fill="#16130f"/><rect x="4" y="5" width="2" height="2" fill="#f2e8d5"/><rect x="10" y="5" width="2" height="2" fill="#f2e8d5"/><rect class="beg-tear" x="4" y="8" width="1" height="2" fill="#7fd4ff"/><rect x="5" y="11" width="6" height="3" fill="#c8282d"/><rect x="3" y="0" width="1" height="4" fill="#a89c86"/><rect x="12" y="0" width="1" height="4" fill="#a89c86"/><rect class="beg-cup" x="11" y="11" width="4" height="3" fill="#ffcf40"/></g></svg>
       <span class="beg-label">Donate</span>
@@ -341,13 +355,12 @@ h1{margin-bottom:4px!important}
     <section class="donate-box" id="donateBox" role="dialog" aria-label="Donate to the dev" hidden>
       <h2 id="donateTitle">Token Lab is free</h2>
       <p id="donateText">Any amount helps, and it's completely optional. The bots run either way. They'll just sulk.</p>
-      <div class="wallet-box" id="donateWallet"></div>
+      <div class="wallet-box"><span id="donateWallet"></span><button type="button" class="sbtn" id="quickCopy" title="Copy the donation wallet">Copy CA</button></div>
       <div class="amounts" id="donateAmounts">
         <input id="donateCustom" type="number" min="0" step="any" placeholder="Any SOL" aria-label="Custom SOL amount">
         <a id="donateCustomLink" href="#">Send</a>
       </div>
       <div class="donate-actions">
-        <button type="button" class="sbtn go" id="donateCopy">Copy wallet</button>
         <button type="button" class="sbtn" id="donateNo">No thanks</button>
       </div>
       <p class="donate-note">Send SOL on Solana only. Amount links open your wallet app, if it supports Solana Pay. Double-check the address. Donations can't be refunded.</p>
@@ -381,12 +394,17 @@ h1{margin-bottom:4px!important}
   <div class="sub" id="socialSub"></div>
   <div class="chips" id="socialLinks"></div>
   <div class="tiles" id="xStats" hidden></div>
+  <div id="socialExtra"></div>
   <div class="warn" id="socialWarn" hidden></div>
 </section>
 <section class="card" id="safety" hidden>
   <div class="hero" id="safetyHero"></div>
   <div class="sub" id="safetySub"></div>
   <div id="safetyFlags"></div>
+  <div class="section" style="margin-top:12px">Exit test</div>
+  <div id="exitTest"></div>
+  <div class="section" style="margin-top:12px">Volume, 24 hours</div>
+  <div id="volumeBox"><span class="scanning">Inspecting volume</span></div>
 </section>
 <section class="card" id="holders" hidden>
   <div class="hero" id="holdersHero"></div>
@@ -435,6 +453,8 @@ h1{margin-bottom:4px!important}
     <div class="tile"><span>Shown here</span><b id="others">…</b></div>
   </div>
   <div class="sub" style="margin-top:8px">Dev wallet <a id="dev" target="_blank" rel="noopener noreferrer"></a></div>
+  <div class="section" style="margin-top:12px">Creator fees collected</div>
+  <div id="feeTracker"><span class="scanning">Reading fee claims</span></div>
   <div class="warn" id="warn" hidden></div>
 </section>
 <section class="card scroll" id="results" hidden>
@@ -666,7 +686,7 @@ function checkFailed(hero, sub, message) {
 }
 
 function resetNewChecks() {
-  [["safety", "safetyHero", "Inspecting mint", ["safetySub", "safetyFlags"]],
+  [["safety", "safetyHero", "Inspecting mint", ["safetySub", "safetyFlags", "exitTest"]],
    ["holders", "holdersHero", "Ranking holders", ["holdersSub", "holdersMeters", "holdersList"]],
    ["liquidity", "liqHero", "Measuring pools", ["liqSub", "liqTiles", "liqNote"]]].forEach(([panel, hero, text, clear]) => {
     $(panel).hidden = false;
@@ -675,6 +695,68 @@ function resetNewChecks() {
     clear.forEach(id => { $(id).textContent = ""; });
   });
   $("holdersTitle").hidden = $("liqTiles").hidden = true;
+  $("volumeBox").innerHTML = '<span class="scanning">Inspecting volume</span>';
+  $("feeTracker").innerHTML = '<span class="scanning">Reading fee claims</span>';
+  $("exitTest").innerHTML = '<span class="scanning">Testing the exit</span>';
+}
+
+function exitRow(name, detail, danger) {
+  const row = document.createElement("div"); row.className = "flag" + (danger ? " danger" : "");
+  const dot = document.createElement("i");
+  const title = document.createElement("b"); title.textContent = name;
+  const text = document.createElement("span"); text.textContent = detail;
+  row.append(dot, title, text);
+  $("exitTest").append(row);
+}
+
+function renderFees(e) {
+  const box = $("feeTracker");
+  box.textContent = "";
+  const note = document.createElement("div"); note.className = "sub";
+  if (e.error) { note.textContent = "Couldn't read fee claims: " + e.error; box.append(note); return; }
+  const tiles = document.createElement("div"); tiles.className = "tiles";
+  tile(tiles, e.complete ? "Total collected" : "Collected, at least", e.sol.toFixed(e.sol < 1 ? 3 : 2) + " SOL");
+  tile(tiles, "Claims", e.claims);
+  tile(tiles, "Last claim", e.latest ? ago(new Date(e.latest * 1000).toISOString()) : "none seen");
+  box.append(tiles);
+  const since = e.oldest ? ago(new Date(e.oldest * 1000).toISOString()) : "";
+  note.textContent = e.complete ? "From this wallet's full history." : "Only the newest " + e.scanned.toLocaleString() + " transactions were read" + (since ? ", back to " + since : "") + ", so the real total may be higher.";
+  box.append(note);
+}
+
+function renderVolume(e) {
+  const box = $("volumeBox");
+  box.textContent = "";
+  const head = document.createElement("div"); head.className = "flag" + (e.verdict === "Looks washed" || e.verdict === "Mostly non-organic" ? " danger" : "");
+  const dot = document.createElement("i");
+  const title = document.createElement("b"); title.textContent = e.error ? "Not available" : e.verdict;
+  const detail = document.createElement("span");
+  detail.textContent = e.error || (e.total > 0 ? usd(e.total) + " traded, about " + Math.round(e.organicShare) + "% counted as organic by Jupiter" : "No trades in the last 24 hours");
+  head.append(dot, title, detail);
+  box.append(head);
+  if (e.error || !(e.total > 0)) return;
+  meter(box, "Buy share of volume", Math.round(e.buy / e.total * 100) + "%", e.buy / e.total * 100);
+  const tiles = document.createElement("div"); tiles.className = "tiles";
+  tile(tiles, "Traders", e.traders.toLocaleString());
+  tile(tiles, "Buys", e.buys.toLocaleString());
+  tile(tiles, "Sells", e.sells.toLocaleString());
+  box.append(tiles);
+}
+
+function renderExit(e) {
+  $("exitTest").textContent = "";
+  if (!e.route) { exitRow("Sell route", "Jupiter found no route, so you may not be able to swap this token.", true); return; }
+  if (e.roundTripLoss !== undefined) {
+    const loss = Math.max(0, e.roundTripLoss);
+    exitRow("0.1 SOL round trip", "About " + loss.toFixed(1) + "% lost buying and selling at once, including fees and price impact.", loss >= 15);
+  }
+  const results = {
+    sellable: ["Sell simulation", "Passed: a real holder's small sale worked in simulation.", false],
+    blocked: ["Sell simulation", "Failed for " + e.simFailed + " holder wallets. Possible honeypot, or the simulation hit another error.", true],
+    untested: ["Sell simulation", e.simFailed ? "Inconclusive: one holder's simulated sale failed." : "Not tested: no suitable holder wallet could be simulated.", false],
+  };
+  exitRow(...results[e.verdict]);
+  if (e.verdict === "blocked") setMood("safety", "alarm");
 }
 
 function renderSafety(e) {
@@ -782,7 +864,7 @@ function renderSnipers(e) {
 function resetSocials() {
   $("socials").hidden = false;
   $("socialState").hidden = false;
-  $("socialHero").textContent = $("socialSub").textContent = $("socialLinks").textContent = $("xStats").textContent = "";
+  $("socialHero").textContent = $("socialSub").textContent = $("socialLinks").textContent = $("xStats").textContent = $("socialExtra").textContent = "";
   $("xStats").hidden = $("socialWarn").hidden = true;
 }
 
@@ -821,7 +903,40 @@ function safeLink(url) {
 
 const count = v => v === null || v === undefined ? "not available" : v.toLocaleString();
 
+function socialFact(name, detail, warn) {
+  const row = document.createElement("div"); row.className = "flag" + (warn ? " danger" : "");
+  const dot = document.createElement("i");
+  const title = document.createElement("b"); title.textContent = name;
+  const text = document.createElement("span"); text.textContent = detail;
+  row.append(dot, title, text);
+  $("socialExtra").append(row);
+}
+
+function renderSocialFacts(e) {
+  const x = e.x;
+  if (x && x.handle && x.created) {
+    const days = (Date.now() - Date.parse(x.created)) / 86400000;
+    const young = days < 30;
+    const suspicious = days < 30 && (x.followers || 0) >= 1000;
+    socialFact("X account age", "Created " + ago(x.created) + (suspicious ? ": new account with a large following" : ""), suspicious || (young && days < 7));
+  }
+  if (x && x.handle) {
+    const names = x.previousNames || [];
+    if (names.length) socialFact("Previous X names", "@" + names.join(", @") + " (" + names.length + " found in a public archive)", true);
+    else socialFact("Previous X names", x.historyKnown ? "None found. Coverage is limited, so the name may still have changed." : "The name archive didn't respond.");
+  }
+  const site = e.site;
+  if (site) {
+    if (site.shared) socialFact("Website age", site.domain + " is a shared host, so its age says nothing about this project.");
+    else if (site.created) {
+      const days = (Date.now() - Date.parse(site.created)) / 86400000;
+      socialFact("Website age", site.domain + " registered " + ago(site.created), days < 7);
+    } else socialFact("Website age", "Registration date not available for " + site.domain + ".");
+  }
+}
+
 function renderSocials(e) {
+  renderSocialFacts(e);
   $("socialState").hidden = true;
   const x = e.x;
   if (e.twitter) chip(x && x.handle ? "X @" + x.handle : "X", e.twitter);
@@ -899,6 +1014,9 @@ function handle(e) {
   if (e.stage === "bundle") return renderBundle(e);
   if (e.stage === "sniper") return renderSnipers(e);
   if (e.stage === "safety") return renderSafety(e);
+  if (e.stage === "exit") return renderExit(e);
+  if (e.stage === "volume") return renderVolume(e);
+  if (e.stage === "fees") return renderFees(e);
   if (e.stage === "holders") return renderHolders(e);
   if (e.stage === "liquidity") return renderLiquidity(e);
   if (e.stage === "samename") return renderSame(e);
@@ -1614,7 +1732,6 @@ async function copyDonateWallet(button) {
   if (copied) begReact("party", "Deadpool · Hope!", "It's on your clipboard! So close! Please don't paste a dog coin instead.");
   setTimeout(() => { button.textContent = label; }, 2500);
 }
-$("donateCopy").addEventListener("click", () => copyDonateWallet($("donateCopy")));
 $("quickCopy").addEventListener("click", () => copyDonateWallet($("quickCopy")));
 $("donateNo").addEventListener("click", () => {
   toggleDonate(false);

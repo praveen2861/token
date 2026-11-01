@@ -151,6 +151,62 @@ func TestVerdicts(t *testing.T) {
 	}
 }
 
+func TestDomainCandidates(t *testing.T) {
+	got, shared := domainCandidates("https://www.shop.example.co.uk/page")
+	if len(got) != 2 || got[0] != "co.uk" || got[1] != "example.co.uk" || shared {
+		t.Errorf("got %v %v", got, shared)
+	}
+	if got, shared := domainCandidates("https://mytoken.vercel.app"); !shared || got[0] != "vercel.app" {
+		t.Errorf("got %v %v", got, shared)
+	}
+	for _, bad := range []string{"javascript:alert(1)", "not a url", "http://localhost/x", "http://127.0.0.1"} {
+		if got, _ := domainCandidates(bad); bad != "http://127.0.0.1" && len(got) != 0 {
+			t.Errorf("%s: got %v", bad, got)
+		}
+	}
+}
+
+func TestExitVerdict(t *testing.T) {
+	for _, c := range []struct {
+		passed, failed int
+		want           string
+	}{{1, 2, "sellable"}, {0, 2, "blocked"}, {0, 1, "untested"}, {0, 0, "untested"}} {
+		if got := exitVerdict(c.passed, c.failed); got != c.want {
+			t.Errorf("%d/%d: got %s", c.passed, c.failed, got)
+		}
+	}
+}
+
+func TestCollectedFee(t *testing.T) {
+	var tx feeTx
+	raw := `{"meta":{"logMessages":["Program log: Instruction: CollectCreatorFee"],"preBalances":[1000000000],"postBalances":[1500000000]},"transaction":{"message":{"accountKeys":[{"pubkey":"DEV"}]}}}`
+	if err := json.Unmarshal([]byte(raw), &tx); err != nil {
+		t.Fatal(err)
+	}
+	if sol, ok := collectedFee(&tx, "DEV"); !ok || sol != 0.5 {
+		t.Errorf("got %v %v", sol, ok)
+	}
+	if _, ok := collectedFee(&tx, "OTHER"); ok {
+		t.Error("another wallet shouldn't count")
+	}
+	tx.Meta.LogMessages = []string{"Program log: Instruction: Buy"}
+	if _, ok := collectedFee(&tx, "DEV"); ok {
+		t.Error("a trade shouldn't count")
+	}
+}
+
+func TestVolumeVerdict(t *testing.T) {
+	for _, c := range []struct {
+		total, share float64
+		traders      int
+		want         string
+	}{{0, 0, 0, "No recent volume"}, {1000000, 5, 20, "Looks washed"}, {1000, 5, 50, "Mostly non-organic"}, {1000, 20, 50, "Mixed"}, {1000, 70, 50, "Mostly organic"}} {
+		if got := volumeVerdict(c.total, c.share, c.traders); got != c.want {
+			t.Errorf("%+v: got %s", c, got)
+		}
+	}
+}
+
 func TestUSD(t *testing.T) {
 	for v, want := range map[float64]string{76: "$76", 3900: "$3.9K", 4.88e9: "$4.88B", 1.5e6: "$1.50M"} {
 		if got := usd(v); got != want {
