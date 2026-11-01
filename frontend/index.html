@@ -337,6 +337,18 @@ html{scrollbar-color:var(--line) var(--bg)}
 .cabinet thead th{position:sticky;top:0;z-index:1;background:var(--panel)}
 .cabinet table{border-collapse:separate;border-spacing:0}
 @media (max-width:620px){#same,#results{max-height:none;overflow:visible}.cabinet thead th{position:static}}
+.own-ca{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}
+.own-ca-text{font:12px ui-monospace,Consolas,monospace;color:var(--text);overflow-wrap:anywhere}
+.own-ca-text b{color:var(--accent);font-weight:600}
+.own-short{display:none}
+.own-ca .sbtn{padding:3px 8px;font-size:11px;text-decoration:none}
+.own-pump{border-color:#14f195;color:#14f195}
+.own-pump,.own-dex{display:inline-flex;align-items:center;gap:5px}
+.own-ca img{display:block;flex:none;width:14px;height:14px}
+.own-dex{border-color:#6db8ff;color:#6db8ff}
+.own-dex:hover{border-color:#6db8ff;background:#6db8ff;color:#16130f}
+.own-pump:hover{border-color:#14f195;background:#14f195;color:#16130f}
+@media (max-width:760px){.own-full{display:none}.own-short{display:inline}}
 [hidden]{display:none}
 </style>
 <script src="config.js"></script>
@@ -345,7 +357,13 @@ html{scrollbar-color:var(--line) var(--bg)}
 <main>
 <header class="topbar">
   <span class="logo" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="7" y="1" width="2" height="2" fill="#f2e8d5"/><rect x="2" y="3" width="12" height="10" fill="#ffcf40"/><rect x="1" y="6" width="1" height="4" fill="#ffcf40"/><rect x="14" y="6" width="1" height="4" fill="#ffcf40"/><rect x="4" y="5" width="8" height="6" fill="#16130f"/><rect x="5" y="6" width="2" height="2" fill="#f2e8d5"/><rect x="9" y="6" width="2" height="2" fill="#f2e8d5"/><rect x="6" y="9" width="4" height="1" fill="#14f195"/><rect x="2" y="14" width="3" height="1" fill="#ffcf40"/><rect x="11" y="14" width="3" height="1" fill="#ffcf40"/></svg></span>
-  <div><h1>Token Lab</h1><p class="tagline">The fastest bots on Solana</p></div>
+  <div><h1>Token Lab</h1><p class="tagline">The fastest bots on Solana</p>
+    <div class="own-ca">
+      <span class="own-ca-text" title="J7zrorRzRJtnCUpyetsaWskqZQHKBXdY3jmg6fi7pump"><b>CA</b> <span class="own-full">J7zrorRzRJtnCUpyetsaWskqZQHKBXdY3jmg6fi7pump</span><span class="own-short">J7zror…i7pump</span></span>
+      <button type="button" class="sbtn" id="ownCopy">Copy</button>
+      <a class="sbtn own-pump" href="https://pump.fun/coin/J7zrorRzRJtnCUpyetsaWskqZQHKBXdY3jmg6fi7pump" target="_blank" rel="noopener noreferrer"><img src="https://pump.fun/favicon.ico" alt="" width="14" height="14" referrerpolicy="no-referrer" onerror="this.remove()">Pump.fun</a>
+      <a class="sbtn own-dex" href="https://dexscreener.com/solana/ctpsmtrcbef2ikqyk2cvndkwnpbtnczhbtwrxelmzess" target="_blank" rel="noopener noreferrer"><img src="https://dexscreener.com/favicon.png" alt="" width="14" height="14" referrerpolicy="no-referrer" onerror="this.remove()">DexScreener</a>
+    </div></div>
   <div class="donate">
     <button type="button" class="beg" id="begBtn" aria-expanded="false" aria-controls="donateBox" aria-label="Donate to the dev">
       <svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><g class="beg-body"><rect x="2" y="2" width="12" height="9" fill="#c8282d"/><rect x="3" y="4" width="4" height="4" fill="#16130f"/><rect x="9" y="4" width="4" height="4" fill="#16130f"/><rect x="4" y="5" width="2" height="2" fill="#f2e8d5"/><rect x="10" y="5" width="2" height="2" fill="#f2e8d5"/><rect class="beg-tear" x="4" y="8" width="1" height="2" fill="#7fd4ff"/><rect x="5" y="11" width="6" height="3" fill="#c8282d"/><rect x="3" y="0" width="1" height="4" fill="#a89c86"/><rect x="12" y="0" width="1" height="4" fill="#a89c86"/><rect class="beg-cup" x="11" y="11" width="4" height="3" fill="#ffcf40"/></g></svg>
@@ -467,6 +485,7 @@ html{scrollbar-color:var(--line) var(--bg)}
 </main>
 <script>
 const $ = id => document.getElementById(id);
+const OWN_CA = "J7zrorRzRJtnCUpyetsaWskqZQHKBXdY3jmg6fi7pump";
 const DONATE_WALLET = "BtU8a72jYvRdK52DMZNjEQZwGe2RYGYbEXuc2T6Hi8hS";
 const usd = v => v >= 1e9 ? "$" + (v/1e9).toFixed(2) + "B" : v >= 1e6 ? "$" + (v/1e6).toFixed(2) + "M" : v >= 1e3 ? "$" + (v/1e3).toFixed(1) + "K" : "$" + Math.round(v);
 const secs = ms => (ms/1000).toFixed(1) + "s";
@@ -1732,6 +1751,23 @@ async function copyDonateWallet(button) {
   if (copied) begReact("party", "Deadpool · Hope!", "It's on your clipboard! So close! Please don't paste a dog coin instead.");
   setTimeout(() => { button.textContent = label; }, 2500);
 }
+$("ownCopy").addEventListener("click", async () => {
+  const button = $("ownCopy");
+  let copied = false;
+  try {
+    await navigator.clipboard.writeText(OWN_CA);
+    copied = true;
+  } catch {
+    const box = document.createElement("textarea");
+    box.value = OWN_CA;
+    document.body.append(box);
+    box.select();
+    try { copied = document.execCommand("copy"); } catch {}
+    box.remove();
+  }
+  button.textContent = copied ? "Copied" : "Failed";
+  setTimeout(() => { button.textContent = "Copy"; }, 2000);
+});
 $("quickCopy").addEventListener("click", () => copyDonateWallet($("quickCopy")));
 $("donateNo").addEventListener("click", () => {
   toggleDonate(false);
@@ -1758,7 +1794,7 @@ async function checkBrowserClipboard() {
   if (!navigator.clipboard || !navigator.clipboard.readText) return;
   try {
     const match = (await navigator.clipboard.readText()).match(COPIED);
-    if (match && match[1] !== lastCA) runCopied(match[1]);
+    if (match && match[1] !== lastCA && match[1] !== OWN_CA) runCopied(match[1]);
   } catch {}
 }
 
@@ -1767,7 +1803,7 @@ api("/api/config").then(r => r.json()).then(config => {
     window.addEventListener("focus", checkBrowserClipboard);
     document.addEventListener("visibilitychange", () => { if (!document.hidden) checkBrowserClipboard(); });
   } else {
-    new EventSource(API_BASE + "/api/clipboard").onmessage = e => runCopied(e.data);
+    new EventSource(API_BASE + "/api/clipboard").onmessage = e => { if (e.data !== OWN_CA) runCopied(e.data); };
   }
 }).catch(() => {});
 </script>
