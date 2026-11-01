@@ -40,6 +40,59 @@ type xAuthor struct {
 	Followers  *int64 `json:"followers"`
 }
 
+// xStatusFallback runs when the main source can't read a post, which is usually because it was
+// deleted. X's embed endpoint says whether it was, and vxtwitter may still hold a saved copy.
+func xStatusFallback(ctx context.Context, stats map[string]any, handle, id string, cause error) map[string]any {
+	var embed struct {
+		Typename  string `json:"__typename"`
+		Tombstone struct {
+			Text struct {
+				Text string `json:"text"`
+			} `json:"text"`
+		} `json:"tombstone"`
+	}
+	var saved struct {
+		Likes      *int64 `json:"likes"`
+		Retweets   *int64 `json:"retweets"`
+		Date       string `json:"date"`
+		ScreenName string `json:"user_screen_name"`
+	}
+	var wg sync.WaitGroup
+	var embedErr, savedErr error
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		embedErr = fetch(ctx, "GET", "https://cdn.syndication.twimg.com/tweet-result?id="+id+"&token=a", nil, &embed)
+	}()
+	go func() {
+		defer wg.Done()
+		savedErr = fetch(ctx, "GET", "https://api.vxtwitter.com/status/"+id, nil, &saved)
+	}()
+	wg.Wait()
+
+	deleted := embedErr == nil && strings.Contains(strings.ToLower(embed.Tombstone.Text.Text), "deleted")
+	stats["deleted"] = deleted
+	if savedErr == nil && saved.ScreenName != "" {
+		handle = saved.ScreenName
+		stats["saved"] = true
+		stats["likes"] = saved.Likes
+		stats["retweets"] = saved.Retweets
+		stats["posted"] = saved.Date
+	} else if !deleted {
+		stats["error"] = "Couldn't read this post: " + cause.Error()
+	}
+	if handle != "" {
+		stats["handle"] = handle
+		var profile struct {
+			Followers *int64 `json:"followers_count"`
+		}
+		if fetch(ctx, "GET", "https://api.vxtwitter.com/"+handle, nil, &profile) == nil {
+			stats["followers"] = profile.Followers
+		}
+	}
+	return stats
+}
+
 func xStats(ctx context.Context, link string) map[string]any {
 	kind, handle, id := xLink(link)
 	stats := map[string]any{"kind": kind}
@@ -55,8 +108,7 @@ func xStats(ctx context.Context, link string) map[string]any {
 			} `json:"tweet"`
 		}
 		if err := fetch(ctx, "GET", "https://api.fxtwitter.com/status/"+id, nil, &out); err != nil {
-			stats["error"] = "Couldn't read this post: " + err.Error()
-			return stats
+			return xStatusFallback(ctx, stats, handle, id, err)
 		}
 		stats["handle"] = out.Tweet.Author.ScreenName
 		stats["followers"] = out.Tweet.Author.Followers

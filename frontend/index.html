@@ -832,7 +832,16 @@ function renderSocials(e) {
     $("socialSub").textContent = e.linksComplete ? "This token lists no X, Telegram or website." : "The token's metadata file didn't load in time, so its links couldn't be read. Try again.";
     return;
   }
-  if (x && !x.error && x.kind === "status") {
+  if (x && !x.error && x.kind === "status" && (x.deleted || x.saved)) {
+    $("socialHero").textContent = x.deleted ? "Post deleted" : "Saved copy";
+    $("socialSub").textContent = (x.deleted ? "The author deleted the linked post" : "The live post couldn't be read") + (x.handle ? " (@" + x.handle + ")" : "") + (x.posted ? ", posted " + ago(x.posted) : "") + ". Views aren't available. Sites may still show a saved copy.";
+    tile($("xStats"), "Followers", compact(x.followers));
+    if (x.saved) {
+      tile($("xStats"), "Likes, last seen", compact(x.likes));
+      tile($("xStats"), "Reposts, last seen", compact(x.retweets));
+    }
+    $("xStats").hidden = false;
+  } else if (x && !x.error && x.kind === "status") {
     $("socialHero").textContent = compact(x.views) + " views";
     $("socialSub").textContent = "On the post by @" + (x.handle || "?") + (x.posted ? ", " + ago(x.posted) : "") + ". Numbers are that account's, not always the token's.";
     tile($("xStats"), "Followers", compact(x.followers));
@@ -1299,6 +1308,7 @@ function socialMood(e) {
   const x = e.x, any = e.twitter || e.telegram || e.website;
   if (!any && !e.linksComplete) return ["worry", "The metadata host won't answer. Socials may exist!"];
   if (!any) return ["bad", "No socials. Not even a website. I'm so alone."];
+  if (x && x.deleted) return ["worry", "The linked post was deleted."];
   if (x && !x.error && (x.followers || 0) >= 10000) return ["great", "Big audience! Check it's really theirs, though."];
   if (x && !x.error && x.kind === "profile" && (x.followers || 0) < 100) return ["worry", "Fewer followers than my toaster."];
   return ["ok", "Socials found. Nothing wild."];
@@ -1386,7 +1396,8 @@ function labEvent(e) {
     const x = e.x;
     const links = [e.twitter && "X", e.telegram && "Telegram", e.website && "Website"].filter(Boolean);
     let finding = links.length ? links.join(" · ") : e.linksComplete ? "No socials listed" : "Unknown";
-    if (x && x.kind === "status" && !x.error) finding = count(x.views) + " views · " + count(x.followers) + " followers";
+    if (x && x.deleted) finding = "Post deleted";
+    else if (x && x.kind === "status" && !x.error) finding = count(x.views) + " views · " + count(x.followers) + " followers";
     else if (x && x.kind === "profile" && !x.error) finding = count(x.followers) + " followers";
     const [mood, line] = socialMood(e);
     setMood("scout", mood);
