@@ -338,16 +338,17 @@ html{scrollbar-color:var(--line) var(--bg)}
 .cabinet table{border-collapse:separate;border-spacing:0}
 @media (max-width:620px){#same,#results{max-height:none;overflow:visible}.cabinet thead th{position:static}}
 .own-ca{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}
+.own-ca[hidden]{display:none}
 .own-ca-text{font:12px ui-monospace,Consolas,monospace;color:var(--text);overflow-wrap:anywhere}
 .own-ca-text b{color:var(--accent);font-weight:600}
 .own-short{display:none}
 .own-ca .sbtn{padding:3px 8px;font-size:11px;text-decoration:none}
-.own-pump{border-color:#14f195;color:#14f195}
 .own-pump,.own-dex{display:inline-flex;align-items:center;gap:5px}
 .own-ca img{display:block;flex:none;width:14px;height:14px}
+.own-pump{border-color:#14f195;color:#14f195}
+.own-pump:hover{border-color:#14f195;background:#14f195;color:#16130f}
 .own-dex{border-color:#6db8ff;color:#6db8ff}
 .own-dex:hover{border-color:#6db8ff;background:#6db8ff;color:#16130f}
-.own-pump:hover{border-color:#14f195;background:#14f195;color:#16130f}
 @media (max-width:760px){.own-full{display:none}.own-short{display:inline}}
 [hidden]{display:none}
 </style>
@@ -358,11 +359,11 @@ html{scrollbar-color:var(--line) var(--bg)}
 <header class="topbar">
   <span class="logo" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="7" y="1" width="2" height="2" fill="#f2e8d5"/><rect x="2" y="3" width="12" height="10" fill="#ffcf40"/><rect x="1" y="6" width="1" height="4" fill="#ffcf40"/><rect x="14" y="6" width="1" height="4" fill="#ffcf40"/><rect x="4" y="5" width="8" height="6" fill="#16130f"/><rect x="5" y="6" width="2" height="2" fill="#f2e8d5"/><rect x="9" y="6" width="2" height="2" fill="#f2e8d5"/><rect x="6" y="9" width="4" height="1" fill="#14f195"/><rect x="2" y="14" width="3" height="1" fill="#ffcf40"/><rect x="11" y="14" width="3" height="1" fill="#ffcf40"/></svg></span>
   <div><h1>Token Lab</h1><p class="tagline">The fastest bots on Solana</p>
-    <div class="own-ca">
-      <span class="own-ca-text" title="2x3BsE6wiSWDPyaX94PfEZSzCXPPzX81txrrHamjpump"><b>CA</b> <span class="own-full">2x3BsE6wiSWDPyaX94PfEZSzCXPPzX81txrrHamjpump</span><span class="own-short">2x3BsE…mjpump</span></span>
+    <div class="own-ca" id="ownCa" hidden>
+      <span class="own-ca-text"><b>CA</b> <span class="own-full" id="ownFull"></span><span class="own-short" id="ownShort"></span></span>
       <button type="button" class="sbtn" id="ownCopy">Copy</button>
-      <a class="sbtn own-pump" href="https://pump.fun/coin/2x3BsE6wiSWDPyaX94PfEZSzCXPPzX81txrrHamjpump" target="_blank" rel="noopener noreferrer"><img src="https://pump.fun/favicon.ico" alt="" width="14" height="14" referrerpolicy="no-referrer" onerror="this.remove()">Pump.fun</a>
-      <a class="sbtn own-dex" href="https://dexscreener.com/solana/5twmdyc3pvwjd42oqtnpfki36kmbw7pmqrhvnefncavz" target="_blank" rel="noopener noreferrer"><img src="https://dexscreener.com/favicon.png" alt="" width="14" height="14" referrerpolicy="no-referrer" onerror="this.remove()">DexScreener</a>
+      <a class="sbtn own-pump" id="ownPump" target="_blank" rel="noopener noreferrer"><img src="https://pump.fun/favicon.ico" alt="" width="14" height="14" referrerpolicy="no-referrer" onerror="this.remove()">Pump.fun</a>
+      <a class="sbtn own-dex" id="ownDex" target="_blank" rel="noopener noreferrer"><img src="https://dexscreener.com/favicon.png" alt="" width="14" height="14" referrerpolicy="no-referrer" onerror="this.remove()">DexScreener</a>
     </div></div>
   <div class="donate">
     <button type="button" class="beg" id="begBtn" aria-expanded="false" aria-controls="donateBox" aria-label="Donate to the dev">
@@ -485,7 +486,8 @@ html{scrollbar-color:var(--line) var(--bg)}
 </main>
 <script>
 const $ = id => document.getElementById(id);
-const OWN_CA = "2x3BsE6wiSWDPyaX94PfEZSzCXPPzX81txrrHamjpump";
+// Set by set-ca.ps1. Empty hides the contract row in the header.
+const OWN_CA = "8aE7Svc9zu36BkWn3LsEptyTxq55bfNofKv4b9FEpump";
 const DONATE_WALLET = "BtU8a72jYvRdK52DMZNjEQZwGe2RYGYbEXuc2T6Hi8hS";
 const usd = v => v >= 1e9 ? "$" + (v/1e9).toFixed(2) + "B" : v >= 1e6 ? "$" + (v/1e6).toFixed(2) + "M" : v >= 1e3 ? "$" + (v/1e3).toFixed(1) + "K" : "$" + Math.round(v);
 const secs = ms => (ms/1000).toFixed(1) + "s";
@@ -1750,6 +1752,13 @@ async function copyDonateWallet(button) {
   button.textContent = copied ? "Copied" : "Copy failed";
   if (copied) begReact("party", "Deadpool · Hope!", "It's on your clipboard! So close! Please don't paste a dog coin instead.");
   setTimeout(() => { button.textContent = label; }, 2500);
+}
+if (OWN_CA) {
+  $("ownFull").textContent = OWN_CA;
+  $("ownShort").textContent = OWN_CA.slice(0, 6) + "…" + OWN_CA.slice(-6);
+  $("ownPump").href = "https://pump.fun/coin/" + OWN_CA;
+  $("ownDex").href = "https://dexscreener.com/solana/" + OWN_CA;
+  $("ownCa").hidden = false;
 }
 $("ownCopy").addEventListener("click", async () => {
   const button = $("ownCopy");
