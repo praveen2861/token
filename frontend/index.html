@@ -1,0 +1,1647 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Token Lab · Solana token scanner</title>
+<meta name="description" content="Paste a Solana contract and four bots check its socials, bundles, same-name tokens and the dev's ATH history, live.">
+<meta name="theme-color" content="#16130f">
+<meta property="og:title" content="Token Lab">
+<meta property="og:description" content="Four bots check a Solana token's socials, bundles, same-name tokens and dev ATH history, live.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%20shape-rendering%3D%22crispEdges%22%3E%3Crect%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22%2316130f%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%221%22%20width%3D%222%22%20height%3D%222%22%20fill%3D%22%23f2e8d5%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%223%22%20width%3D%2212%22%20height%3D%2210%22%20fill%3D%22%23ffcf40%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%226%22%20width%3D%221%22%20height%3D%224%22%20fill%3D%22%23ffcf40%22%2F%3E%3Crect%20x%3D%2214%22%20y%3D%226%22%20width%3D%221%22%20height%3D%224%22%20fill%3D%22%23ffcf40%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%225%22%20width%3D%228%22%20height%3D%226%22%20fill%3D%22%2316130f%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%226%22%20width%3D%222%22%20height%3D%222%22%20fill%3D%22%23f2e8d5%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%226%22%20width%3D%222%22%20height%3D%222%22%20fill%3D%22%23f2e8d5%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%229%22%20width%3D%224%22%20height%3D%221%22%20fill%3D%22%2314f195%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%2214%22%20width%3D%223%22%20height%3D%221%22%20fill%3D%22%23ffcf40%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%2214%22%20width%3D%223%22%20height%3D%221%22%20fill%3D%22%23ffcf40%22%2F%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Silkscreen&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#16130f;--panel:#1f1b15;--line:#4a4235;--text:#f2e8d5;--dim:#a89c86;--accent:#ffcf40;--warn:#ffcf40;--bad:#ff5c4d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 "IBM Plex Mono",Consolas,monospace}
+main{margin:0;padding:20px 24px 64px}
+@media (max-width:460px){main{padding:16px 16px 48px}}
+h1{font:400 26px/1 Silkscreen,monospace;margin:0 0 14px;color:var(--accent)}
+input{width:100%;padding:14px 16px;font:15px ui-monospace,Consolas,monospace;color:var(--text);background:var(--panel);border:2px solid var(--line);border-radius:0;outline:none}
+input:focus{border-color:var(--accent)}
+#status{min-height:24px;margin:12px 0;color:var(--dim)}
+#status.error{color:var(--bad)}
+.card{background:var(--panel);border:2px solid var(--line);border-radius:0;padding:16px;margin-bottom:16px}
+.label{color:var(--dim);font-size:13px}
+.best{font:400 30px/1.2 Silkscreen,monospace;color:var(--accent);font-variant-numeric:tabular-nums}
+.stats{display:flex;flex-wrap:wrap;gap:8px 28px;margin-top:12px}
+.mono{font-family:ui-monospace,Consolas,monospace;font-size:13px;overflow-wrap:anywhere}
+.warn{color:var(--warn);margin-top:10px}
+a{color:inherit}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--dim);font-size:13px;font-weight:500}
+td.num,th.num{text-align:right}
+tr.pasted td{background:rgba(94,234,212,.09)}
+.tag{color:var(--accent);font-size:12px;margin-left:6px}
+.scanner{background:var(--panel);border:2px solid var(--line);border-radius:0;padding:14px 16px;margin-bottom:16px}
+.bar{position:relative;height:4px;overflow:hidden;border-radius:2px;background:var(--line)}
+.bar::after{content:"";position:absolute;inset:0 auto 0 0;width:35%;background:var(--accent);animation:sweep 1.3s steps(8) infinite}
+.steps{display:flex;flex-wrap:wrap;align-items:center;gap:8px 22px;margin-top:12px;font-size:14px}
+.step{display:flex;align-items:center;gap:8px;color:var(--dim)}
+.step i{width:10px;height:10px;border-radius:50%;border:2px solid var(--line)}
+.step.active{color:var(--text)}
+.step.active i{border-color:var(--accent);border-top-color:transparent;animation:spin .8s linear infinite}
+.step.finished{color:var(--accent)}
+.step.finished i{background:var(--accent);border-color:var(--accent);animation:pop .25s ease-out}
+.elapsed{margin-left:auto;color:var(--dim);font-variant-numeric:tabular-nums}
+.scanning{color:var(--dim)}
+.scanning::after{content:"_";animation:cursor 1s steps(2) infinite}
+@keyframes sweep{from{transform:translateX(-100%)}to{transform:translateX(300%)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pop{from{transform:scale(.4)}to{transform:scale(1)}}
+@keyframes shimmer{from{background-position:100% 0}to{background-position:0 0}}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.bar::after,.step i,.scanning,#rows tr{animation:none}.bar::after{width:100%}.scanning{color:var(--text)}}
+.verdict{font:400 22px/1.3 Silkscreen,monospace}
+.verdict.high{color:var(--bad)}.verdict.mid{color:var(--warn)}.verdict.low{color:var(--accent)}
+details{margin-top:12px}summary{cursor:pointer;color:var(--dim)}
+#bundleWallets div{display:flex;justify-content:space-between;gap:16px;padding:4px 0}
+.auto{display:flex;align-items:center;gap:8px;margin-top:10px;color:var(--dim);font-size:14px;cursor:pointer}
+.auto input{width:auto;margin:0}
+
+#scanner{display:none}
+.off{display:none!important}
+.lab{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:12px 0 18px;align-items:start}
+@media (max-width:1100px){.lab{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:620px){.lab{grid-template-columns:minmax(0,1fr)}}
+.cabinet{min-width:0;border:2px solid var(--line);background:var(--panel)}
+.cabinet .card{margin:0;padding:10px;border:0;border-top:2px solid var(--line);background:transparent}
+.cabinet .best{font-size:24px}
+.cabinet .verdict{font-size:16px}
+.cabinet .stats{gap:6px 18px}
+.cabinet th,.cabinet td{padding:5px 6px;font-size:12px}
+.cabinet details{margin-top:8px}
+#bundleWallets{font-size:11px}
+.bot{--c:#6db8ff;display:block;width:100%;min-width:0;text-align:left;color:var(--text);padding:10px;background:transparent}
+.bot[data-agent=scout]{--c:#6db8ff}.bot[data-agent=bundle]{--c:#ff9a3d}.bot[data-agent=name]{--c:#d78cff}.bot[data-agent=dev]{--c:#6fe07a}
+.bot-head{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font:400 12px/1.2 Silkscreen,monospace;color:var(--c)}
+.bot-time{color:var(--dim);font:12px "IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+.bot svg{display:block;width:auto;height:96px;max-width:100%;margin:8px 0;image-rendering:pixelated;shape-rendering:crispEdges}
+.bot-find{min-height:20px;font-weight:600;font-size:13px;line-height:1.35;color:var(--text);overflow-wrap:anywhere}
+.bot-msg{min-height:34px;font-size:12px;line-height:1.35;color:var(--dim);overflow-wrap:anywhere}
+.bot-bar{position:relative;height:6px;margin-top:6px;overflow:hidden;background:var(--line)}
+.bot-bar i{position:absolute;inset:0 auto 0 0;width:0;background:var(--c)}
+.bot.working .bot-bar.unknown i{width:30%;animation:sweep 1.2s steps(8) infinite}
+.bot.done .bot-bar i{width:100%!important}
+.bot.failed .bot-bar i{width:100%!important;background:var(--bad)}
+.arms-up,.mouth-sad,.sweat,.spark,.bot .fx{visibility:hidden}
+.lid{visibility:hidden;animation:blink 3.7s steps(1) infinite}
+@keyframes blink{0%,94%{visibility:hidden}95%,100%{visibility:visible}}
+.bot.working .fx,.bot.done .bars{visibility:visible}
+.bot.working .sprite{animation:hop .5s steps(2) infinite}
+.bot.working .arms-down{animation:hop2 .24s steps(2) infinite}
+.bot.working .f1{animation:frame .9s steps(1) infinite}
+.bot.working .f2{animation:frame .9s steps(1) -.3s infinite}
+.bot.working .f3{animation:frame .9s steps(1) -.6s infinite}
+.bot.working .glass{animation:scan 1.2s steps(6) infinite alternate}
+.bot.retry .sprite{animation:jitter .2s steps(2) infinite}
+.bot.retry .sweat{visibility:visible;animation:frame .5s steps(1) infinite}
+.bot.done .arms-down{visibility:hidden}.bot.done .arms-up{visibility:visible}
+.bot.done .sprite{animation:leap .4s steps(3) 3}
+.bot.done .spark{visibility:visible;animation:twinkle .4s steps(1) 4 both}
+.bot.failed .sprite{transform:translateY(3px)}
+.bot.failed .mouth-ok{visibility:hidden}.bot.failed .mouth-sad{visibility:visible}
+@keyframes hop{50%{transform:translateY(-3px)}}
+@keyframes hop2{50%{transform:translateY(3px)}}
+@keyframes jitter{50%{transform:translateX(3px)}}
+@keyframes leap{50%{transform:translateY(-6px)}}
+@keyframes frame{0%,33%{visibility:visible}34%,100%{visibility:hidden}}
+@keyframes twinkle{0%,50%{visibility:visible}51%,100%{visibility:hidden}}
+@keyframes scan{from{transform:translateX(0)}to{transform:translateX(24px)}}
+@keyframes cursor{50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.bot *{animation:none!important}}
+.bot{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:12px;align-items:center}
+.bot-head{grid-column:1/-1}
+.bot svg{grid-row:2/span 2;height:72px;margin:6px 0 0}
+.bot-find{display:none}
+.bot-msg{grid-column:2;min-height:0;align-self:end}
+.bot-bar{grid-column:2;align-self:start}
+.cabinet{--c:#6db8ff}
+.cabinet.c-bundle{--c:#ff9a3d}.cabinet.c-name{--c:#d78cff}.cabinet.c-dev{--c:#6fe07a}
+.cabinet .card{padding:12px}
+.hero{font:400 24px/1.2 Silkscreen,monospace;color:var(--c);overflow-wrap:anywhere}
+.hero.high{color:var(--bad)}.hero.mid{color:var(--warn)}.hero.low{color:#6fe07a}
+.sub{margin-top:2px;font-size:12px;color:var(--dim);overflow-wrap:anywhere}
+.sub a{color:var(--text)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:2px;margin-top:10px;background:var(--line);border:2px solid var(--line)}
+.tile{min-width:0;padding:6px 8px;background:var(--panel)}
+.tile span{display:block;font-size:11px;color:var(--dim)}
+.tile b{display:block;font-weight:600;font-size:14px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{padding:3px 8px;border:2px solid var(--c);color:var(--text);font-size:12px;text-decoration:none;overflow-wrap:anywhere}
+a.chip:hover{background:var(--c);color:var(--bg)}
+.meters{margin-top:10px}
+.meter{margin-top:8px}
+.meter-top{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--dim)}
+.meter-top b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+.track{height:6px;margin-top:2px;background:var(--line)}
+.track i{display:block;height:100%;background:var(--c)}
+.section{margin-top:14px;font:400 11px/1.2 Silkscreen,monospace;color:var(--dim)}
+.wallet{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:12px}
+.wallet a{font-family:ui-monospace,Consolas,monospace}
+.wallet .held{color:var(--dim);white-space:nowrap}
+.wallet .held.keeps{color:var(--warn);font-weight:600}
+.wallet .track{grid-column:1/-1}
+.cabinet table{margin-top:8px}
+.cabinet th[data-key]{cursor:pointer;user-select:none}
+.cabinet th[data-key]:hover{color:var(--text)}
+.cabinet th.sorted{color:var(--c)}
+.cabinet td{white-space:nowrap}
+.cabinet td.name a{color:var(--text);font-weight:600;text-decoration:none}
+.cabinet td.name a:hover{text-decoration:underline}
+.cabinet td .track{min-width:44px;height:3px}
+.down{display:block;font-size:10px;color:var(--bad)}
+.dead{color:var(--dim)}
+.cabinet .tag{display:inline-block;margin-left:5px;padding:0 3px;border:1px solid currentColor;font-size:10px;font-weight:400;color:var(--c)}
+tr.pasted td{background:color-mix(in srgb,var(--c) 12%,transparent)}
+.empty{margin-top:6px;color:var(--dim);font-size:13px}
+.search{position:relative;display:flex;align-items:center;gap:8px;padding:6px 6px 6px 12px;background:var(--panel);border:2px solid var(--line);box-shadow:4px 4px 0 #000}
+.search:focus-within{border-color:var(--accent)}
+.search.valid{border-color:#14f195}
+.search.invalid{border-color:var(--bad)}
+.sol{flex:none;width:24px;height:19px}
+.search input#ca{flex:1;min-width:0;padding:8px 2px;border:0;background:transparent;outline:none;font:600 15px "IBM Plex Mono",Consolas,monospace}
+.search input#ca::placeholder{font-weight:400;color:var(--dim)}
+.search-state{flex:none;max-width:30%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--dim)}
+.search.valid .search-state{color:#14f195}.search.invalid .search-state{color:var(--bad)}
+kbd{flex:none;padding:0 6px;border:2px solid var(--line);color:var(--dim);font:12px "IBM Plex Mono",monospace}
+.sbtn{flex:none;padding:7px 12px;border:2px solid var(--line);background:transparent;color:var(--text);font:400 12px Silkscreen,monospace;cursor:pointer}
+.sbtn:hover{border-color:var(--text)}
+.sbtn:active{transform:translate(1px,1px)}
+.sbtn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.sbtn.go{background:var(--accent);border-color:var(--accent);color:#16130f}
+.sbtn.go:hover{background:#ffe07a;border-color:#ffe07a}
+#clearBtn{padding:7px 9px;font-family:"IBM Plex Mono",monospace;border-color:transparent;color:var(--dim)}
+.recent{position:absolute;z-index:20;left:-2px;right:-2px;top:100%;margin:6px 0 0;padding:0;list-style:none;background:var(--panel);border:2px solid var(--line);box-shadow:4px 4px 0 #000}
+.recent li{display:flex;gap:12px;justify-content:space-between;padding:8px 12px;cursor:pointer;font-size:13px}
+.recent li.head{cursor:default;color:var(--dim);font:400 11px Silkscreen,monospace}
+.recent li:not(.head):hover,.recent li.on{background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.recent b{font-weight:600}
+.recent span{color:var(--dim);white-space:nowrap}
+.recent .addr{flex:1;overflow:hidden;text-overflow:ellipsis;font-size:12px}
+@media (max-width:620px){.search{flex-wrap:wrap}.search input#ca{flex-basis:70%}.search-state,kbd{display:none}.sbtn.go{flex:1}.sbtn#pasteBtn{flex:1}}
+.layer{transition:transform .2s steps(3)}
+.bot.working .l1{transform:translate(1px,1px)}
+.bot.working .l2{transform:translate(2px,2px)}
+.bot.working .l3{transform:translate(3px,3px)}
+@media (prefers-reduced-motion:reduce){.layer{transition:none}}
+h1{margin-bottom:4px!important}
+.tagline{margin:0;font-size:13px;color:var(--dim)}
+.topbar{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.logo{flex:none;width:44px;height:44px}
+.logo svg{display:block;width:100%;height:100%}
+.bot-quip{grid-column:1/-1;min-height:16px;margin-top:6px;font-size:11px;font-style:italic;color:var(--c)}
+.bot:not(.working) .bot-quip{display:none}
+.bot-feed{grid-column:1/-1;max-height:78px;overflow-y:auto;font-size:11px;line-height:1.4;font-style:italic;color:var(--c)}
+.bot-feed:not(:empty){margin-top:6px}
+.bot-feed div{animation:feedIn .25s ease-out}
+@keyframes feedIn{from{opacity:0;transform:translateY(4px)}}
+@media (prefers-reduced-motion:reduce){.bot-feed div{animation:none}}
+.mouth-great,.mouth-worry,.brows,.cloud,.siren,.rain{visibility:hidden}
+.bot.working .pupils{animation:look 1.6s steps(1) infinite}
+.bot[data-agent=bundle].working .pupils{animation-duration:.9s}
+.bot[data-agent=name].working .pupils{animation-duration:1.2s}
+.bot.working .sprite{animation:hop .5s steps(2) infinite,fidget 5s steps(1) infinite}
+@keyframes look{0%,49%{transform:translateX(-3px)}50%,100%{transform:none}}
+@keyframes fidget{0%,86%{rotate:0deg}87%,92%{rotate:-6deg}93%,100%{rotate:6deg}}
+.bot .sprite{transform-box:fill-box;transform-origin:50% 100%}
+.bot.done .mouth-ok{visibility:hidden}
+.bot.done.mood-ok .mouth-ok{visibility:visible}
+.bot.done.mood-ok .arms-up,.bot.done.mood-ok .spark{visibility:hidden}
+.bot.done.mood-ok .arms-down{visibility:visible}
+.bot.done.mood-ok .sprite{animation:leap .4s steps(3) 1}
+.bot.done.mood-great .mouth-great{visibility:visible}
+.bot.done.mood-great .sprite{animation:leap .5s steps(3) infinite}
+.bot.done.mood-great .arms-up{animation:hop2 .25s steps(2) infinite}
+.bot.done.mood-great .spark{animation:twinkle .5s steps(1) infinite}
+.bot.done.mood-worry .mouth-worry{visibility:visible}
+.bot.done.mood-worry .arms-up,.bot.done.mood-worry .spark{visibility:hidden}
+.bot.done.mood-worry .arms-down{visibility:visible}
+.bot.done.mood-worry .sprite{animation:jitter .6s steps(2) infinite}
+.bot.done.mood-worry .sweat{visibility:visible;animation:frame .8s steps(1) infinite}
+.bot.done.mood-worry .pupils{animation:look .7s steps(1) infinite}
+.bot.done.mood-bad .mouth-sad{visibility:visible}
+.bot.done.mood-bad .arms-up,.bot.done.mood-bad .spark{visibility:hidden}
+.bot.done.mood-bad .arms-down{visibility:visible;transform:translateY(6px)}
+.bot.done.mood-bad .sprite{animation:none;transform:translateY(3px)}
+.bot.done.mood-bad .pupils{transform:translateY(0)}
+.bot.done.mood-bad .cloud{visibility:visible}
+.bot.done.mood-bad .rain{visibility:visible;animation:frame .6s steps(1) infinite}
+.bot.done.mood-bad .rain.r2{animation-delay:-.2s}.bot.done.mood-bad .rain.r3{animation-delay:-.4s}
+.bot.done.mood-alarm .mouth-sad,.bot.done.mood-alarm .brows{visibility:visible}
+.bot.done.mood-alarm .spark{visibility:hidden}
+.bot.done.mood-alarm .arms-up{animation:hop2 .16s steps(2) infinite}
+.bot.done.mood-alarm .sprite{animation:jitter .14s steps(2) infinite}
+.bot.done.mood-alarm .siren{visibility:visible;animation:twinkle .4s steps(1) infinite}
+.stack{display:grid;gap:12px;min-width:0;align-content:start}
+.bot[data-agent=sniper],.cabinet.c-sniper{--c:#ff7a8a}
+.sniper-list{max-height:210px;overflow-y:auto}
+.bot.working .scope{animation:scan 1s steps(5) infinite alternate}
+.cabinet.c-safety,.bot[data-agent=safety]{--c:#4fe0d0}
+.cabinet.c-holders,.bot[data-agent=holders]{--c:#ffd24a}
+.cabinet.c-liquidity,.bot[data-agent=liquidity]{--c:#9aa8ff}
+.flag{display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 8px;padding:5px 0;border-bottom:1px solid var(--line);font-size:12px}
+.flag b{font-weight:600}
+.flag i{grid-row:1/span 2;width:10px;height:10px;margin-top:3px;background:#6fe07a}
+.flag.danger i{background:var(--bad)}
+.flag span{grid-column:2;color:var(--dim)}
+.flag.danger span{color:var(--text)}
+.donate{position:relative;margin-left:auto;display:flex;align-items:center;gap:10px;min-width:0}
+.beg{display:flex;align-items:center;gap:10px;max-width:520px;padding:4px 10px 4px 4px;border:2px solid #ff8fb1;background:var(--panel);color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.beg:hover{background:color-mix(in srgb,#ff8fb1 16%,var(--panel))}
+.beg:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.beg svg{flex:none;width:36px;height:36px}
+.beg-body{animation:hop 1s steps(2) infinite}
+.beg-tear{animation:frame 1.2s steps(1) infinite}
+.beg-label{flex:none;padding:3px 7px;background:#ff8fb1;color:#16130f;font:400 12px Silkscreen,monospace}
+.beg-text{min-width:0;font-size:12px;line-height:1.3}
+.beg-text b{display:block;font:400 11px Silkscreen,monospace;color:#ff8fb1}
+.beg.party .beg-body{animation:leap .4s steps(3) infinite}
+.beg.party .beg-tear{visibility:hidden}
+.beg.sulk .beg-body{animation:none;transform:translateY(1px)}
+.donate-box{position:absolute;z-index:30;top:100%;right:0;width:min(400px,calc(100vw - 32px));margin-top:8px;padding:14px;background:var(--panel);border:2px solid #ff8fb1;box-shadow:4px 4px 0 #000}
+.donate-box h2{margin:0;font:400 16px/1.3 Silkscreen,monospace;color:#ff8fb1}
+.donate-box p{margin:6px 0 10px;font-size:13px;color:var(--dim)}
+.wallet-box{padding:8px;border:2px solid var(--line);font:12px ui-monospace,Consolas,monospace;overflow-wrap:anywhere}
+.amounts{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px;margin-top:10px}
+.amounts a,.amounts button{padding:6px 10px;border:2px solid var(--line);background:transparent;color:var(--text);font:600 12px "IBM Plex Mono",monospace;text-decoration:none;cursor:pointer}
+.amounts a:hover,.amounts button:hover{border-color:#ff8fb1}
+.amounts input{width:96px;padding:6px 8px;border:2px solid var(--line);background:transparent;color:var(--text);font:12px "IBM Plex Mono",monospace}
+.donate-actions{display:flex;gap:8px;margin-top:12px}
+.donate-actions button{flex:1}
+.donate-note{margin:10px 0 0!important;font-size:11px!important}
+#quickCopy{border-color:#ff8fb1}
+@media (max-width:760px){.beg-text{display:none}.beg{padding:4px}}
+.bot[data-agent=dev],.cabinet.c-dev{--c:#ff5a4d}
+.bot[data-agent=holders],.cabinet.c-holders{--c:#6fe07a}
+.bot[data-agent=bundle],.cabinet.c-bundle{--c:#5a8dff}
+.bot[data-agent=name],.cabinet.c-name{--c:#3fbf6b}
+.bot[data-agent=safety],.cabinet.c-safety{--c:#6db8ff}
+.bot[data-agent=scout],.cabinet.c-scout{--c:#ff4d5e}
+.bot[data-agent=sniper],.cabinet.c-sniper{--c:#b58cff}
+.bot[data-agent=liquidity],.cabinet.c-liquidity{--c:#c9a6ff}
+.board{position:sticky;top:0;z-index:10;margin:12px -24px 0;padding:10px 24px;background:var(--bg);border-bottom:2px solid var(--line)}
+.board-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.board-score{font:400 13px/1.2 Silkscreen,monospace;color:var(--text)}
+.board-counts{font-size:12px;color:var(--dim)}
+.board-counts b{font-weight:600}.board-counts .f{color:var(--bad)}.board-counts .c{color:#6fe07a}
+.board-track{flex:1 1 120px;height:6px;background:var(--line)}
+.board-track i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s steps(4)}
+.board-filter{padding:3px 8px;border:2px solid var(--line);background:transparent;color:var(--text);font:400 11px Silkscreen,monospace;cursor:pointer}
+.board-filter:hover:not(:disabled){border-color:var(--bad)}
+.board-filter:disabled{color:var(--dim);cursor:default}
+.board-filter[aria-pressed=true]{background:var(--bad);border-color:var(--bad);color:#16130f}
+.board-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.pod{--s:var(--line);display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 8px;align-items:center;min-width:0;padding:5px 8px;border:2px solid var(--line);border-left:6px solid var(--c);background:var(--panel);color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.pod:hover{background:color-mix(in srgb,var(--c) 14%,var(--panel));transform:translate(-1px,-1px);box-shadow:2px 2px 0 #000}
+.pod:focus-visible,.bot-fold:focus-visible,.board-filter:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.pod i{grid-row:1/span 2;width:10px;height:10px;background:var(--s)}
+.pod b{overflow:hidden;font:400 11px/1.3 Silkscreen,monospace;color:var(--c);white-space:nowrap;text-overflow:ellipsis}
+.pod span{overflow:hidden;font-size:11px;line-height:1.3;color:var(--dim);white-space:nowrap;text-overflow:ellipsis}
+.pod.working i{background:var(--c);animation:twinkle .7s steps(1) infinite}
+.sev-great{--s:#6fe07a}.sev-ok{--s:var(--dim)}.sev-worry{--s:var(--warn)}.sev-bad,.sev-alarm,.sev-failed{--s:var(--bad)}
+.pod[class*=sev-] span{color:var(--text)}
+.cabinet{position:relative;scroll-margin-top:124px;border-top:6px solid var(--c);box-shadow:4px 4px 0 #000;transition:transform .12s steps(2),box-shadow .12s steps(2)}
+.cabinet:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 #000}
+.cabinet[class*=sev-]{border-color:var(--s);border-top-color:var(--c)}
+.cabinet.sev-alarm{box-shadow:4px 4px 0 var(--bad);animation:alarmEdge 1s steps(1) infinite}
+.cabinet.running::before{content:"";position:absolute;z-index:1;left:0;right:0;top:0;height:2px;background:var(--c);pointer-events:none;animation:scanDown 1.8s steps(16) infinite}
+.cabinet.flash{animation:flashCab .9s steps(2) 1}
+.bot-head .t{flex:1;min-width:0}
+.bot-fold{flex:none;width:20px;height:20px;padding:0;border:2px solid var(--line);background:transparent;color:var(--text);font:600 12px/1 "IBM Plex Mono",monospace;cursor:pointer}
+.bot-fold:hover{border-color:var(--c)}
+.cabinet.shut .card,.cabinet.shut .bot-feed{display:none!important}
+.lab.flags-only .cabinet:not(.flagged),.lab.flags-only .stack:not(:has(.flagged)){display:none}
+@keyframes scanDown{from{top:0}to{top:calc(100% - 2px)}}
+@keyframes alarmEdge{50%{border-color:var(--line)}}
+@keyframes flashCab{50%{background:color-mix(in srgb,var(--c) 30%,var(--panel))}}
+@media (max-width:1100px){.board-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.board{position:static}}
+@media (max-width:460px){.board{margin:12px -16px 0;padding:10px 16px}}
+@media (max-width:620px){.topbar{flex-wrap:wrap}.donate{margin-left:0;width:100%}.donate .beg{margin-left:auto}}
+@media (prefers-reduced-motion:reduce){.cabinet,.pod,.board-track i{transition:none;animation:none!important}.cabinet.running::before,.pod.working i{animation:none}}
+[hidden]{display:none}
+</style>
+<script src="config.js"></script>
+</head>
+<body>
+<main>
+<header class="topbar">
+  <span class="logo" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="7" y="1" width="2" height="2" fill="#f2e8d5"/><rect x="2" y="3" width="12" height="10" fill="#ffcf40"/><rect x="1" y="6" width="1" height="4" fill="#ffcf40"/><rect x="14" y="6" width="1" height="4" fill="#ffcf40"/><rect x="4" y="5" width="8" height="6" fill="#16130f"/><rect x="5" y="6" width="2" height="2" fill="#f2e8d5"/><rect x="9" y="6" width="2" height="2" fill="#f2e8d5"/><rect x="6" y="9" width="4" height="1" fill="#14f195"/><rect x="2" y="14" width="3" height="1" fill="#ffcf40"/><rect x="11" y="14" width="3" height="1" fill="#ffcf40"/></svg></span>
+  <div><h1>Token Lab</h1><p class="tagline">The fastest bots on Solana</p></div>
+  <div class="donate">
+    <button type="button" class="sbtn" id="quickCopy" title="Copy the donation wallet">Copy CA</button>
+    <button type="button" class="beg" id="begBtn" aria-expanded="false" aria-controls="donateBox" aria-label="Donate to the dev">
+      <svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><g class="beg-body"><rect x="2" y="2" width="12" height="9" fill="#c8282d"/><rect x="3" y="4" width="4" height="4" fill="#16130f"/><rect x="9" y="4" width="4" height="4" fill="#16130f"/><rect x="4" y="5" width="2" height="2" fill="#f2e8d5"/><rect x="10" y="5" width="2" height="2" fill="#f2e8d5"/><rect class="beg-tear" x="4" y="8" width="1" height="2" fill="#7fd4ff"/><rect x="5" y="11" width="6" height="3" fill="#c8282d"/><rect x="3" y="0" width="1" height="4" fill="#a89c86"/><rect x="12" y="0" width="1" height="4" fill="#a89c86"/><rect class="beg-cup" x="11" y="11" width="4" height="3" fill="#ffcf40"/></g></svg>
+      <span class="beg-label">Donate</span>
+      <span class="beg-text"><b id="begTitle">Deadpool</b><span id="begLine">Spare some SOL?</span></span>
+    </button>
+    <section class="donate-box" id="donateBox" role="dialog" aria-label="Donate to the dev" hidden>
+      <h2 id="donateTitle">Token Lab is free</h2>
+      <p id="donateText">Any amount helps, and it's completely optional. The bots run either way. They'll just sulk.</p>
+      <div class="wallet-box" id="donateWallet"></div>
+      <div class="amounts" id="donateAmounts">
+        <input id="donateCustom" type="number" min="0" step="any" placeholder="Any SOL" aria-label="Custom SOL amount">
+        <a id="donateCustomLink" href="#">Send</a>
+      </div>
+      <div class="donate-actions">
+        <button type="button" class="sbtn go" id="donateCopy">Copy wallet</button>
+        <button type="button" class="sbtn" id="donateNo">No thanks</button>
+      </div>
+      <p class="donate-note">Send SOL on Solana only. Amount links open your wallet app, if it supports Solana Pay. Double-check the address. Donations can't be refunded.</p>
+    </section>
+  </div>
+</header>
+<form class="search" id="searchForm" role="search">
+  <svg class="sol" viewBox="0 0 398 312" aria-hidden="true"><defs><linearGradient id="solg" x1="360" y1="-37" x2="141" y2="382" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#00FFA3"/><stop offset="1" stop-color="#DC1FFF"/></linearGradient></defs><path fill="url(#solg)" d="M65 237a13 13 0 0 1 9-4h317c6 0 9 7 5 11l-63 64a13 13 0 0 1-9 4H7c-6 0-9-7-5-11zM65 4a13 13 0 0 1 9-4h317c6 0 9 7 5 11l-63 64a13 13 0 0 1-9 4H7C1 79-2 72 2 68zM333 120a13 13 0 0 0-9-4H7c-6 0-9 7-5 11l63 64a13 13 0 0 0 9 4h317c6 0 9-7 5-11z"/></svg>
+  <input id="ca" placeholder="Paste a Solana contract or pump.fun link" autofocus autocomplete="off" spellcheck="false" aria-label="Solana contract address" role="combobox" aria-expanded="false" aria-controls="recent" aria-autocomplete="list">
+  <span class="search-state" id="caState" aria-live="polite"></span>
+  <kbd id="slashHint" title="Press / to focus">/</kbd>
+  <button type="button" class="sbtn" id="clearBtn" aria-label="Clear" hidden>✕</button>
+  <button type="button" class="sbtn" id="pasteBtn">Paste</button>
+  <button type="submit" class="sbtn go" id="goBtn">Scan</button>
+  <ul class="recent" id="recent" role="listbox" aria-label="Recent lookups" hidden></ul>
+</form>
+<div id="status" role="status"></div>
+<section class="lab" id="lab" aria-label="Live analysis agents"></section>
+<section class="scanner" id="scanner" hidden aria-hidden="true">
+  <div class="bar"></div>
+  <div class="steps">
+    <span class="step"><i></i>Finding dev</span>
+    <span class="step"><i></i>Finding latest tokens</span>
+    <span class="step"><i></i>Fetching ATHs</span>
+    <span class="elapsed" id="elapsed">0s</span>
+  </div>
+</section>
+<section class="card" id="socials" hidden>
+  <div id="socialState"><span class="scanning">Reading socials</span></div>
+  <div class="hero" id="socialHero"></div>
+  <div class="sub" id="socialSub"></div>
+  <div class="chips" id="socialLinks"></div>
+  <div class="tiles" id="xStats" hidden></div>
+  <div class="warn" id="socialWarn" hidden></div>
+</section>
+<section class="card" id="safety" hidden>
+  <div class="hero" id="safetyHero"></div>
+  <div class="sub" id="safetySub"></div>
+  <div id="safetyFlags"></div>
+</section>
+<section class="card" id="holders" hidden>
+  <div class="hero" id="holdersHero"></div>
+  <div class="sub" id="holdersSub"></div>
+  <div class="meters" id="holdersMeters"></div>
+  <div class="section" id="holdersTitle" hidden>Top wallets</div>
+  <div class="sniper-list" id="holdersList"></div>
+</section>
+<section class="card" id="liquidity" hidden>
+  <div class="hero" id="liqHero"></div>
+  <div class="sub" id="liqSub"></div>
+  <div class="tiles" id="liqTiles" hidden></div>
+  <div class="sub" id="liqNote" style="margin-top:8px"></div>
+</section>
+<section class="card" id="snipers" hidden>
+  <div class="hero" id="sniperVerdict"></div>
+  <div class="sub" id="sniperSub"></div>
+  <div class="meters" id="sniperMeters"></div>
+  <div class="warn" id="sniperWarn" hidden></div>
+  <div class="section" id="sniperListTitle" hidden>Sniper wallets</div>
+  <div class="sniper-list" id="sniperWallets"></div>
+</section>
+<section class="card" id="bundle" hidden>
+  <div class="hero" id="bundleVerdict"></div>
+  <div class="sub" id="bundleSub"></div>
+  <div class="meters" id="bundleMeters"></div>
+  <div class="warn" id="bundleWarn" hidden></div>
+  <div class="section" id="bundleListTitle" hidden>Launch-block wallets</div>
+  <div id="bundleWallets"></div>
+</section>
+<section class="card scroll" id="same" hidden>
+  <div class="hero" id="sameTitle"></div>
+  <div class="sub" id="sameSub"></div>
+  <div class="warn" id="sameWarn" hidden></div>
+  <table id="sameTable" hidden>
+    <thead><tr><th data-key="name">Token</th><th class="num" data-key="ath">ATH</th><th class="num" data-key="now">Now</th><th data-key="created">Age</th></tr></thead>
+    <tbody id="sameRows"></tbody>
+  </table>
+</section>
+<section class="card" id="summary" hidden>
+  <div class="hero" id="best">…</div>
+  <div class="sub" id="bestToken"></div>
+  <div class="tiles">
+    <div class="tile"><span>Created in total</span><b id="recordCreated">…</b></div>
+    <div class="tile"><span>Graduated</span><b id="recordGrad">…</b></div>
+    <div class="tile"><span>Shown here</span><b id="others">…</b></div>
+  </div>
+  <div class="sub" style="margin-top:8px">Dev wallet <a id="dev" target="_blank" rel="noopener noreferrer"></a></div>
+  <div class="warn" id="warn" hidden></div>
+</section>
+<section class="card scroll" id="results" hidden>
+  <div class="section" style="margin-top:0">Latest tokens</div>
+  <table id="devTable">
+    <thead><tr><th data-key="name">Token</th><th class="num" data-key="ath">ATH</th><th class="num" data-key="now">Now</th><th data-key="created">Age</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+</section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const DONATE_WALLET = "BtU8a72jYvRdK52DMZNjEQZwGe2RYGYbEXuc2T6Hi8hS";
+const usd = v => v >= 1e9 ? "$" + (v/1e9).toFixed(2) + "B" : v >= 1e6 ? "$" + (v/1e6).toFixed(2) + "M" : v >= 1e3 ? "$" + (v/1e3).toFixed(1) + "K" : "$" + Math.round(v);
+const secs = ms => (ms/1000).toFixed(1) + "s";
+let current = null, lastCA = "";
+
+let timer = null;
+
+function setStep(active) {
+  document.querySelectorAll(".step").forEach((s, i) => {
+    s.className = "step" + (i < active ? " finished" : i === active ? " active" : "");
+  });
+  $("dev").classList.toggle("scanning", active === 1);
+}
+
+function startScanner() {
+  clearInterval(timer);
+  const began = Date.now();
+  $("elapsed").textContent = "0s";
+  timer = setInterval(() => { $("elapsed").textContent = Math.floor((Date.now() - began) / 1000) + "s"; }, 250);
+  setStep(0);
+  $("scanner").hidden = false;
+}
+
+function stopScanner() {
+  clearInterval(timer);
+  setStep(3);
+  $("scanner").hidden = true;
+}
+
+function status(text, isError) { $("status").textContent = text; $("status").className = isError ? "error" : ""; }
+
+function ago(iso) {
+  const then = Date.parse(iso);
+  if (isNaN(then)) return "";
+  const s = Math.max(0, Math.floor((Date.now() - then) / 1000));
+  const units = [["yr", 31536000], ["mo", 2592000], ["day", 86400], ["hr", 3600], ["min", 60]];
+  for (const [name, size] of units) {
+    if (s >= size) {
+      const n = Math.floor(s / size);
+      return n + " " + name + (n > 1 && name !== "min" && name !== "mo" ? "s" : "") + " ago";
+    }
+  }
+  return "just now";
+}
+
+// Shows the age; hovering gives the exact UTC time.
+function createdCell(row, iso) {
+  const td = cell(row, iso ? ago(iso) : "");
+  if (iso) td.title = iso.slice(0, 16).replace("T", " ") + " UTC";
+}
+
+function cell(row, text, cls) { const td = row.insertCell(); td.textContent = text; if (cls) td.className = cls; return td; }
+
+let live = [];
+
+function renderBest(cut) {
+  const others = live.filter(t => !t.pasted);
+  const best = others.filter(t => !t.missing).sort((a, b) => b.ath - a.ath)[0];
+  if (best) {
+    $("best").textContent = usd(best.ath) + (cut ? " so far" : "");
+    $("bestToken").textContent = "Best ATH in the latest 10: " + (best.symbol || "?") + " " + best.mint.slice(0, 4) + "…" + best.mint.slice(-4);
+    $("bestToken").title = best.mint;
+  } else {
+    $("best").textContent = cut === "running" ? "…" : cut ? "Unknown" : "No other tokens";
+    $("bestToken").textContent = "";
+  }
+}
+
+function addTokens(tokens) {
+  live.push(...tokens);
+  live.sort((a, b) => (b.created || "").localeCompare(a.created || ""));
+  renderBest("running");
+  renderRows();
+}
+
+function renderDone(e) {
+  const cut = !e.complete || e.unchecked > 0;
+  $("others").textContent = live.filter(t => !t.pasted).length;
+  renderBest(cut);
+  const warnings = [];
+  if (!e.complete) warnings.push("The wallet scan ran out of time before finding 10 tokens, so some may be missing.");
+  if (e.unchecked > 0) warnings.push(e.unchecked + " ATHs couldn't be fetched in time, so the best ATH may be higher.");
+  $("warn").textContent = warnings.join(" ");
+  $("warn").hidden = !warnings.length;
+  renderRows();
+  status("Done in " + secs(e.ms) + " · " + e.scanned + " transactions scanned");
+}
+
+const sorts = { rows: { key: "created", desc: true }, sameRows: { key: "created", desc: true } };
+const tables = { rows: () => live, sameRows: () => sameTokens };
+let sameTokens = [], sameCut = false;
+
+function sortValue(t, key) {
+  if (key === "name") return (t.symbol || "").toLowerCase();
+  if (key === "created") return t.created || "";
+  return t[key] || 0;
+}
+
+function drawTable(id) {
+  const body = $(id), sort = sorts[id], tokens = [...tables[id]()];
+  tokens.sort((a, b) => {
+    const x = sortValue(a, sort.key), y = sortValue(b, sort.key);
+    return (x < y ? -1 : x > y ? 1 : 0) * (sort.desc ? -1 : 1);
+  });
+  const top = Math.max(...tokens.map(t => t.ath || 0), 1);
+  const dated = tokens.filter(t => t.created).map(t => t.created).sort();
+  const candidates = tokens.filter(t => !t.pasted && !t.missing);
+  const bestMint = candidates.length ? candidates.reduce((a, b) => b.ath > a.ath ? b : a).mint : "";
+  body.textContent = "";
+  tokens.forEach(t => {
+    const r = body.insertRow();
+    if (t.pasted) r.className = "pasted";
+    const name = cell(r, "", "name");
+    const a = document.createElement("a");
+    a.href = "https://dexscreener.com/solana/" + encodeURIComponent(t.mint);
+    a.target = "_blank"; a.rel = "noopener noreferrer";
+    a.textContent = t.symbol || "?";
+    a.title = t.mint;
+    name.append(a);
+    const tag = text => { const s = document.createElement("span"); s.className = "tag"; s.textContent = text; name.append(s); };
+    if (t.pasted) tag("pasted");
+    if (t.mint === bestMint && tokens.length > 1) tag("best");
+    if (id === "sameRows" && !sameCut && t.created && t.created === dated[0] && tokens.length > 1) tag("oldest");
+    const ath = cell(r, t.missing ? "n/a" : usd(t.ath), "num");
+    if (!t.missing) { const track = document.createElement("div"); track.className = "track"; const fill = document.createElement("i"); fill.style.width = Math.max(2, t.ath / top * 100) + "%"; track.append(fill); ath.append(track); }
+    const now = cell(r, t.now > 0 ? usd(t.now) : "–", "num" + (t.now > 0 ? "" : " dead"));
+    if (t.now > 0 && t.ath > t.now) { const d = document.createElement("span"); d.className = "down"; d.textContent = "-" + Math.round((1 - t.now / t.ath) * 100) + "%"; now.append(d); }
+    createdCell(r, t.created);
+  });
+  body.closest("table").querySelectorAll("th[data-key]").forEach(th => {
+    const on = th.dataset.key === sort.key;
+    th.classList.toggle("sorted", on);
+    th.setAttribute("aria-sort", on ? (sort.desc ? "descending" : "ascending") : "none");
+    th.textContent = th.textContent.replace(/ [▲▼]$/, "") + (on ? (sort.desc ? " ▼" : " ▲") : "");
+  });
+}
+
+function renderRows() {
+  drawTable("rows");
+  $("results").hidden = false;
+}
+
+document.addEventListener("click", e => {
+  const th = e.target.closest("th[data-key]");
+  if (!th) return;
+  const id = th.closest("table").querySelector("tbody").id, sort = sorts[id], key = th.dataset.key;
+  if (sort.key === key) sort.desc = !sort.desc;
+  else { sort.key = key; sort.desc = key !== "name"; }
+  drawTable(id);
+});
+
+const pct = v => (v < 0.01 && v > 0 ? "<0.01" : v.toFixed(2)) + "%";
+
+function meter(parent, label, value, percent) {
+  const m = document.createElement("div"); m.className = "meter";
+  const top = document.createElement("div"); top.className = "meter-top";
+  const l = document.createElement("span"); l.textContent = label;
+  const v = document.createElement("b"); v.textContent = value;
+  top.append(l, v);
+  const track = document.createElement("div"); track.className = "track";
+  const fill = document.createElement("i"); fill.style.width = Math.min(100, percent) + "%";
+  track.append(fill); m.append(top, track); parent.append(m);
+}
+
+function resetBundle() {
+  $("bundle").hidden = false;
+  $("bundleVerdict").className = "hero";
+  $("bundleVerdict").innerHTML = '<span class="scanning">Checking launch block</span>';
+  $("bundleSub").textContent = $("bundleMeters").textContent = $("bundleWallets").textContent = "";
+  $("bundleWarn").hidden = $("bundleListTitle").hidden = true;
+}
+
+function renderBundle(e) {
+  if (e.error) {
+    $("bundleVerdict").textContent = "Check failed";
+    $("bundleVerdict").className = "hero mid";
+    $("bundleWarn").textContent = e.error;
+    $("bundleWarn").hidden = false;
+    return;
+  }
+  const wallets = e.sameBlock || [];
+  $("bundleVerdict").textContent = e.verdict;
+  $("bundleVerdict").className = "hero " + (e.verdict === "Likely bundled" ? "high" : e.verdict === "Possibly bundled" ? "mid" : "low");
+  $("bundleSub").textContent = wallets.length ? wallets.length + " other " + (wallets.length === 1 ? "wallet" : "wallets") + " bought in the launch block" : "Nobody but the dev bought in the launch block";
+  meter($("bundleMeters"), "Launch wallets bought", pct(e.sameBlockPct), e.sameBlockPct);
+  meter($("bundleMeters"), "They hold now", e.heldKnown ? pct(e.heldPct) : "unknown", e.heldKnown ? e.heldPct : 0);
+  meter($("bundleMeters"), "Dev bought", pct(e.devPct), e.devPct);
+  meter($("bundleMeters"), "Next 10 slots, net (" + e.earlyWallets + " wallets)", pct(e.earlyPct), e.earlyPct);
+  if (!e.complete) {
+    $("bundleWarn").textContent = "Too many early trades to read them all, so the next-10-slots figures may be low.";
+    $("bundleWarn").hidden = false;
+  }
+  const top = Math.max(...wallets.map(w => w.pct), 0.01);
+  wallets.forEach(w => {
+    const row = document.createElement("div"); row.className = "wallet";
+    const a = document.createElement("a");
+    a.href = "https://solscan.io/account/" + encodeURIComponent(w.wallet);
+    a.target = "_blank"; a.rel = "noopener noreferrer";
+    a.textContent = w.wallet.slice(0, 5) + "…" + w.wallet.slice(-5) + "  " + pct(w.pct);
+    a.title = w.wallet;
+    const held = document.createElement("span");
+    const keeps = e.heldKnown && w.heldPct > 0;
+    held.className = "held" + (keeps ? " keeps" : "");
+    held.textContent = !e.heldKnown ? "" : keeps ? "holds " + pct(w.heldPct) : "sold all";
+    const track = document.createElement("div"); track.className = "track";
+    const fill = document.createElement("i"); fill.style.width = Math.max(2, w.pct / top * 100) + "%";
+    track.append(fill); row.append(a, held, track);
+    $("bundleWallets").append(row);
+  });
+  $("bundleListTitle").hidden = !wallets.length;
+}
+
+function checkFailed(hero, sub, message) {
+  $(hero).textContent = "Check failed";
+  $(hero).className = "hero mid";
+  $(sub).textContent = message;
+}
+
+function resetNewChecks() {
+  [["safety", "safetyHero", "Inspecting mint", ["safetySub", "safetyFlags"]],
+   ["holders", "holdersHero", "Ranking holders", ["holdersSub", "holdersMeters", "holdersList"]],
+   ["liquidity", "liqHero", "Measuring pools", ["liqSub", "liqTiles", "liqNote"]]].forEach(([panel, hero, text, clear]) => {
+    $(panel).hidden = false;
+    $(hero).className = "hero";
+    $(hero).innerHTML = '<span class="scanning">' + text + '</span>';
+    clear.forEach(id => { $(id).textContent = ""; });
+  });
+  $("holdersTitle").hidden = $("liqTiles").hidden = true;
+}
+
+function renderSafety(e) {
+  if (e.error) return checkFailed("safetyHero", "safetySub", e.error);
+  $("safetyHero").textContent = e.verdict;
+  $("safetyHero").className = "hero " + (e.verdict === "Red flags" ? "high" : "low");
+  $("safetySub").textContent = e.token2022 ? "Token-2022 program, extensions checked" : "Standard token program";
+  e.flags.forEach(f => {
+    const row = document.createElement("div"); row.className = "flag " + f.level;
+    const dot = document.createElement("i");
+    const name = document.createElement("b"); name.textContent = f.name;
+    const detail = document.createElement("span"); detail.textContent = f.detail;
+    row.append(dot, name, detail);
+    $("safetyFlags").append(row);
+  });
+}
+
+function renderHolders(e) {
+  if (e.error) return checkFailed("holdersHero", "holdersSub", e.error);
+  $("holdersHero").textContent = e.verdict;
+  $("holdersHero").className = "hero " + (e.verdict === "Concentrated" ? "mid" : e.verdict === "Spread out" ? "low" : "");
+  $("holdersSub").textContent = (e.holderCount ? e.holderCount.toLocaleString() + " holders. " : "") + "Pools and curves (" + pct(e.programPct) + ") and burned tokens are excluded.";
+  meter($("holdersMeters"), "Top 10 wallets", pct(e.top10), e.top10);
+  meter($("holdersMeters"), "Largest wallet", pct(e.largest), e.largest);
+  if (e.dev) meter($("holdersMeters"), "Dev holds now", e.devKnown ? pct(e.devPct) : "unknown", e.devKnown ? e.devPct : 0);
+  const top = Math.max(...e.wallets.map(w => w.pct), 0.01);
+  e.wallets.forEach(w => {
+    const row = document.createElement("div"); row.className = "wallet";
+    const a = document.createElement("a");
+    a.href = "https://solscan.io/account/" + encodeURIComponent(w.wallet);
+    a.target = "_blank"; a.rel = "noopener noreferrer";
+    a.textContent = w.wallet.slice(0, 5) + "…" + w.wallet.slice(-5);
+    a.title = w.wallet;
+    const held = document.createElement("span"); held.className = "held"; held.textContent = pct(w.pct);
+    const track = document.createElement("div"); track.className = "track";
+    const fill = document.createElement("i"); fill.style.width = Math.max(2, w.pct / top * 100) + "%";
+    track.append(fill); row.append(a, held, track);
+    $("holdersList").append(row);
+  });
+  $("holdersTitle").hidden = !e.wallets.length;
+}
+
+function renderLiquidity(e) {
+  if (e.error) return checkFailed("liqHero", "liqSub", e.error);
+  $("liqHero").textContent = e.verdict;
+  $("liqHero").className = "hero " + (e.verdict === "Healthy" ? "low" : e.verdict === "Thin" ? "mid" : e.verdict === "On bonding curve" ? "" : "high");
+  $("liqSub").textContent = e.onCurve ? "Trading on the launchpad curve, not a pool yet" : e.pools + " " + (e.pools === 1 ? "pool" : "pools") + (e.topDex ? ", largest on " + e.topDex : "");
+  tile($("liqTiles"), "Liquidity", e.liquidity > 0 ? usd(e.liquidity) : "–");
+  tile($("liqTiles"), "Market cap", e.mcap > 0 ? usd(e.mcap) : "–");
+  tile($("liqTiles"), "Liq / mcap", e.liquidity > 0 && e.mcap > 0 ? (e.liquidity / e.mcap * 100).toFixed(1) + "%" : "–");
+  if (e.onCurve) tile($("liqTiles"), "Curve", Math.round(e.curvePct) + "%");
+  $("liqTiles").hidden = false;
+  $("liqNote").textContent = e.onCurve ? "" : "LP burn or lock isn't checked, so confirm it before trusting this pool.";
+}
+
+function resetSnipers() {
+  $("snipers").hidden = false;
+  $("sniperVerdict").className = "hero";
+  $("sniperVerdict").innerHTML = '<span class="scanning">Scanning the first slots</span>';
+  $("sniperSub").textContent = $("sniperMeters").textContent = $("sniperWallets").textContent = "";
+  $("sniperWarn").hidden = $("sniperListTitle").hidden = true;
+}
+
+function renderSnipers(e) {
+  if (e.error) {
+    $("sniperVerdict").textContent = "Check failed";
+    $("sniperVerdict").className = "hero mid";
+    $("sniperWarn").textContent = e.error;
+    $("sniperWarn").hidden = false;
+    return;
+  }
+  const list = e.snipers || [];
+  $("sniperVerdict").textContent = e.verdict;
+  $("sniperVerdict").className = "hero " + (e.verdict === "Heavily sniped" ? "high" : e.verdict === "Sniped" ? "mid" : e.verdict === "No snipers" ? "low" : "");
+  $("sniperSub").textContent = list.length ? e.wallets + " " + (e.wallets === 1 ? "wallet" : "wallets") + " bought in the 10 slots after launch" : "Nobody new bought in the 10 slots after launch";
+  if (list.length) {
+    meter($("sniperMeters"), "They bought (gross)", pct(e.boughtPct), e.boughtPct);
+    meter($("sniperMeters"), "They hold now", e.heldKnown ? pct(e.heldPct) : "unknown", e.heldKnown ? e.heldPct : 0);
+  }
+  const notes = [];
+  if (!e.complete) notes.push("Too many early trades to read them all, so these figures may be low.");
+  if (e.checked < e.wallets) notes.push("Holdings checked for the " + e.checked + " largest of " + e.wallets + " wallets, so the real figure may be higher.");
+  $("sniperWarn").textContent = notes.join(" ");
+  $("sniperWarn").hidden = !notes.length;
+  const top = Math.max(...list.map(w => w.pct), 0.01);
+  list.forEach((w, i) => {
+    const row = document.createElement("div"); row.className = "wallet";
+    const a = document.createElement("a");
+    a.href = "https://solscan.io/account/" + encodeURIComponent(w.wallet);
+    a.target = "_blank"; a.rel = "noopener noreferrer";
+    a.textContent = w.wallet.slice(0, 5) + "…" + w.wallet.slice(-5) + "  " + pct(w.pct);
+    a.title = w.wallet;
+    const held = document.createElement("span");
+    const known = e.heldKnown && i < e.checked, keeps = known && w.heldPct > 0;
+    held.className = "held" + (keeps ? " keeps" : "");
+    held.textContent = !known ? "" : keeps ? "holds " + pct(w.heldPct) : "sold all";
+    const track = document.createElement("div"); track.className = "track";
+    const fill = document.createElement("i"); fill.style.width = Math.max(2, w.pct / top * 100) + "%";
+    track.append(fill); row.append(a, held, track);
+    $("sniperWallets").append(row);
+  });
+  $("sniperListTitle").hidden = !list.length;
+}
+
+function resetSocials() {
+  $("socials").hidden = false;
+  $("socialState").hidden = false;
+  $("socialHero").textContent = $("socialSub").textContent = $("socialLinks").textContent = $("xStats").textContent = "";
+  $("xStats").hidden = $("socialWarn").hidden = true;
+}
+
+function tile(parent, label, value) {
+  const box = document.createElement("div"); box.className = "tile";
+  const l = document.createElement("span"); l.textContent = label;
+  const v = document.createElement("b"); v.textContent = value;
+  box.append(l, v); parent.append(box);
+}
+
+function chip(name, url) {
+  const link = safeLink(url);
+  const el = document.createElement(link ? "a" : "span");
+  el.className = "chip"; el.textContent = name;
+  if (link) { el.href = link; el.target = "_blank"; el.rel = "noopener noreferrer"; el.title = link; }
+  $("socialLinks").append(el);
+}
+
+const compact = v => v === null || v === undefined ? "n/a" : v >= 1e6 ? (v / 1e6).toFixed(2) + "M" : v >= 1e4 ? (v / 1e3).toFixed(1) + "K" : v.toLocaleString();
+
+function stat(parent, label, value, href) {
+  const box = document.createElement("div");
+  const l = document.createElement("div");
+  l.className = "label"; l.textContent = label;
+  const v = document.createElement(href ? "a" : "div");
+  v.textContent = value;
+  if (href) { v.href = href; v.target = "_blank"; v.rel = "noopener noreferrer"; v.style.overflowWrap = "anywhere"; }
+  box.append(l, v);
+  parent.append(box);
+}
+
+// Links come from token metadata that anyone can write, so only real web links become clickable.
+function safeLink(url) {
+  try { const u = new URL(url); return u.protocol === "https:" || u.protocol === "http:" ? u.href : null; } catch { return null; }
+}
+
+const count = v => v === null || v === undefined ? "not available" : v.toLocaleString();
+
+function renderSocials(e) {
+  $("socialState").hidden = true;
+  const x = e.x;
+  if (e.twitter) chip(x && x.handle ? "X @" + x.handle : "X", e.twitter);
+  if (e.telegram) chip("Telegram", e.telegram);
+  if (e.website) { let host = "Website"; try { host = new URL(e.website).hostname.replace(/^www\./, ""); } catch {} chip(host, e.website); }
+  if (!e.twitter && !e.telegram && !e.website) {
+    $("socialHero").textContent = e.linksComplete ? "No socials" : "Unknown";
+    $("socialSub").textContent = e.linksComplete ? "This token lists no X, Telegram or website." : "The token's metadata file didn't load in time, so its links couldn't be read. Try again.";
+    return;
+  }
+  if (x && !x.error && x.kind === "status") {
+    $("socialHero").textContent = compact(x.views) + " views";
+    $("socialSub").textContent = "On the post by @" + (x.handle || "?") + (x.posted ? ", " + ago(x.posted) : "") + ". Numbers are that account's, not always the token's.";
+    tile($("xStats"), "Followers", compact(x.followers));
+    tile($("xStats"), "Likes", compact(x.likes));
+    tile($("xStats"), "Reposts", compact(x.retweets));
+    $("xStats").hidden = false;
+  } else if (x && !x.error && x.kind === "profile") {
+    $("socialHero").textContent = compact(x.followers) + " followers";
+    const notes = [];
+    if (x.created) notes.push("Account created " + ago(x.created));
+    if (x.fetchedOn) notes.push("count as of " + ago(new Date(x.fetchedOn * 1000).toISOString()));
+    $("socialSub").textContent = notes.join(", ");
+  } else {
+    $("socialHero").textContent = "Links found";
+  }
+  const note = x && (x.error || (x.kind === "other" ? "This X link is a community or other page, so there are no views or followers to read." : ""));
+  $("socialWarn").textContent = note || "";
+  $("socialWarn").hidden = !note;
+}
+
+function resetSame() {
+  $("same").hidden = false;
+  $("sameTitle").innerHTML = '<span class="scanning">Searching names</span>';
+  $("sameSub").textContent = "";
+  $("sameTable").hidden = $("sameWarn").hidden = true;
+  sameTokens = [];
+  $("sameRows").textContent = "";
+}
+
+function renderSame(e) {
+  if (e.error) {
+    $("sameTitle").textContent = "Check failed";
+    $("sameWarn").textContent = e.error;
+    $("sameWarn").hidden = false;
+    return;
+  }
+  $("sameTitle").textContent = e.total + " same-name";
+  const alive = e.tokens.filter(t => t.now > 0).length;
+  $("sameSub").textContent = e.total ? 'Other tokens called "' + (e.name || e.symbol) + '", ' + alive + " with a market cap now" : 'No other token called "' + (e.name || e.symbol) + '" found';
+  const notes = [];
+  if (e.total > e.tokens.length) notes.push("Showing the " + e.tokens.length + " most recent.");
+  if (e.partial) notes.push("One search failed, so the list may be short.");
+  const unchecked = e.tokens.filter(t => t.unchecked).length;
+  if (unchecked) notes.push(unchecked + " ATHs couldn't be fetched in time.");
+  $("sameWarn").textContent = notes.join(" ");
+  $("sameWarn").hidden = !notes.length;
+  sameTokens = e.tokens;
+  sameCut = e.total > e.tokens.length;
+  drawTable("sameRows");
+  $("sameTable").hidden = !e.tokens.length;
+}
+
+function handle(e) {
+  labEvent(e);
+  if (e.stage === "bundle") return renderBundle(e);
+  if (e.stage === "sniper") return renderSnipers(e);
+  if (e.stage === "safety") return renderSafety(e);
+  if (e.stage === "holders") return renderHolders(e);
+  if (e.stage === "liquidity") return renderLiquidity(e);
+  if (e.stage === "samename") return renderSame(e);
+  if (e.stage === "socials") return renderSocials(e);
+  if (e.stage === "error") { stopScanner(); return status(e.message, true); }
+  if (e.stage === "dev") {
+    setStep(1);
+    $("summary").hidden = false;
+    $("dev").textContent = e.dev.slice(0, 5) + "…" + e.dev.slice(-5);
+    $("dev").title = e.dev;
+    $("dev").href = "https://solscan.io/account/" + encodeURIComponent(e.dev);
+    $("recordCreated").textContent = e.devMints ? e.devMints.toLocaleString() : "n/a";
+    $("recordGrad").textContent = e.devMints ? e.devMigrations.toLocaleString() : "n/a";
+    status("Dev found in " + e.ms + "ms. Scanning their wallet…");
+  } else if (e.stage === "progress") {
+    $("others").textContent = e.found;
+    status("Finding latest tokens: " + e.scanned.toLocaleString() + " transactions read, " + e.found + " tokens found…");
+  } else if (e.stage === "tokens") {
+    addTokens(e.tokens);
+  } else if (e.stage === "scan") {
+    setStep(2);
+    $("others").textContent = e.found;
+    status("Found " + e.found + " latest tokens in " + secs(e.ms) + ". Fetching remaining ATHs…");
+  } else if (e.stage === "done") { stopScanner(); renderDone(e); }
+}
+
+// A dropped connection usually means the server restarted, so wait for it and run the lookup again.
+async function reconnect(ca, control, retry) {
+  if (retry) {
+    stopScanner();
+    const text = "The connection dropped again, so this result is incomplete. Paste the contract to retry.";
+    status(text, true);
+    labEnded("Connection dropped.");
+    return;
+  }
+  for (let second = 0; second < 30; second++) {
+    status("Connection lost. Reconnecting to the lab… " + (second ? second + "s" : ""));
+    await new Promise(r => setTimeout(r, 1000));
+    if (current !== control) return;
+    try {
+      if ((await fetch(API_BASE + "/healthz", { cache: "no-store" })).ok) {
+        if (current === control) lookup(ca, true);
+        return;
+      }
+    } catch {}
+  }
+  stopScanner();
+  const text = "Can't reach the lab. Try again in a moment, then paste the contract.";
+  status(text, true);
+  labEnded("The lab server isn't responding.");
+}
+
+async function lookup(ca, retry) {
+  let sawDone = false;
+  if (current) current.abort();
+  const control = current = new AbortController();
+  $("summary").hidden = $("results").hidden = $("warn").hidden = true;
+  $("best").textContent = "…"; $("bestToken").textContent = ""; $("others").textContent = "…"; $("rows").textContent = "";
+  status("Looking up…");
+  live = [];
+  devFound = -1;
+  labStart();
+  startScanner();
+  resetBundle();
+  resetSnipers();
+  resetNewChecks();
+  resetSame();
+  resetSocials();
+  try {
+    const res = await api("/api/lookup?ca=" + encodeURIComponent(ca), { signal: control.signal });
+    if (!res.ok) {
+      const failure = await res.json().catch(() => ({}));
+      stopScanner();
+      const text = failure.message || "The lookup was refused (" + res.status + ").";
+      status(text, true);
+      labEnded(text);
+      return;
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+      lines.filter(Boolean).forEach(l => { const event = JSON.parse(l); if (event.stage === "done" || event.stage === "error") sawDone = true; handle(event); });
+    }
+    if (current === control && !sawDone) reconnect(ca, control, retry);
+  } catch (err) {
+    if (err.name !== "AbortError" && current === control) reconnect(ca, control, retry);
+  }
+}
+
+// The API can live on another domain.
+const API_BASE = (window.API_BASE || "").replace(/\/$/, "");
+const api = (path, init) => fetch(API_BASE + path, init);
+
+$("ca").addEventListener("input", e => {
+  const m = e.target.value.match(/[1-9A-HJ-NP-Za-km-z]{32,44}/);
+  if (m && m[0] !== lastCA) { lastCA = m[0]; lookup(m[0]); }
+});
+
+// The lab: each robot's state comes only from events the backend sent for that job.
+const AGENTS = {
+  safety: { title: "Safety Inspector", panels: ["safety"], idle: "Waiting to inspect the mint." },
+  scout: { title: "Social Scout", panels: ["socials"], idle: "Waiting to check X, Telegram and website." },
+  sniper: { title: "Sniper Spotter", panels: ["snipers"], idle: "Waiting to spot early buyers." },
+  bundle: { title: "Bundle Detective", panels: ["bundle"], idle: "Waiting to inspect the launch block." },
+  name: { title: "Name Hunter", panels: ["same"], idle: "Waiting to hunt same-name tokens." },
+  holders: { title: "Holder Analyst", panels: ["holders"], idle: "Waiting to rank the holders." },
+  liquidity: { title: "Liquidity Guard", panels: ["liquidity"], idle: "Waiting to measure the pools." },
+  dev: { title: "Dev ATH Hunter", panels: ["summary", "results"], idle: "Waiting to read the dev's latest 10 tokens." },
+};
+const px = (x, y, w, h, fill, cls) => '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" fill="' + fill + '"' + (cls ? ' class="' + cls + '"' : "") + '/>';
+const SPRITE = [
+  "..########..",
+  ".#dddddddd#.",
+  ".#dwwddwwd#.",
+  ".#dwkddwkd#.",
+  ".#dddddddd#.",
+  ".#dddddddd#.",
+  "..########..",
+  "...#dddd#...",
+  "...#d##d#...",
+  "...#dddd#...",
+  "...######...",
+  "....#..#....",
+  "...##..##...",
+];
+const S = 3, OX = 4, OY = 4;
+const spx = (x, y, w, h, fill, cls) => px(OX + x * S, OY + y * S, w * S, h * S, fill, cls);
+// Each robot's hat, drawn in sprite cells.
+const HATS = {
+  scout: spx(5, -2, 1, 2, "#c") + spx(5, -2, 2, 1, "#f2e8d5"),
+  bundle: spx(3, -2, 6, 2, "#6b4a2b") + spx(1, 0, 10, 1, "#6b4a2b"),
+  name: spx(0, 1, 1, 4, "#c") + spx(11, 1, 1, 4, "#c") + spx(1, -1, 10, 1, "#c"),
+  safety: spx(2, -1, 8, 2, "#ffcf40") + spx(1, 0, 10, 1, "#ffcf40"),
+  holders: spx(3, -2, 6, 1, "#f2e8d5") + spx(2, -1, 8, 1, "#f2e8d5"),
+  liquidity: spx(5, -2, 2, 2, "#7fd4ff") + spx(4, -1, 4, 1, "#7fd4ff"),
+  sniper: spx(2, -1, 8, 2, "#b3263a") + spx(8, -2, 3, 1, "#b3263a") + spx(9, 1, 2, 1, "#2c261e") + "",
+  dev: spx(3, -1, 6, 1, "#ffcf40") + spx(3, -2, 1, 1, "#ffcf40") + spx(5, -2, 2, 1, "#ffcf40") + spx(8, -2, 1, 1, "#ffcf40"),
+};
+// Each robot's task, as stepped frames beside it.
+// Marvel look for the private local version. See DEPLOY.md before putting this online.
+const eyes = c => spx(3, 2, 2, 2, c) + spx(7, 2, 2, 2, c);
+const SKIN = {
+  dev: spx(2, 1, 8, 5, "#ffcf40") + eyes("#eafcff") + spx(5, 8, 2, 1, "#7fe9ff") + spx(4, 11, 4, 2, "#ffcf40"),
+  holders: spx(2, 1, 8, 5, "#3c9a3f") + eyes("#f2e8d5") + spx(4, 9, 4, 2, "#6b3fa0") + spx(3, 7, 6, 2, "#3c9a3f"),
+  bundle: spx(2, 1, 8, 5, "#e8b48a") + eyes("#f2e8d5") + spx(0, 7, 2, 5, "#c8282d") + spx(10, 7, 2, 5, "#c8282d") + spx(5, 8, 2, 1, "#ffcf40"),
+  name: spx(2, 1, 8, 5, "#e8c9a0") + eyes("#f2e8d5") + spx(0, 7, 2, 5, "#14532d") + spx(10, 7, 2, 5, "#14532d") + spx(4, 8, 4, 1, "#ffcf40"),
+  safety: spx(2, 1, 8, 3, "#2f6fd0") + spx(2, 4, 8, 2, "#e8c9a0") + eyes("#f2e8d5") + spx(5, 0, 2, 1, "#f2e8d5") + spx(5, 8, 2, 1, "#f2e8d5") + spx(4, 10, 4, 1, "#c8282d") + spx(10, 7, 4, 4, "#c8282d") + spx(11, 8, 2, 2, "#f2e8d5"),
+  scout: spx(2, 1, 8, 5, "#d9222f") + eyes("#f2e8d5") + spx(4, 8, 4, 2, "#2552c9") + spx(5, 8, 2, 1, "#16130f") + spx(6, 1, 0.34, 5, "#16130f") + spx(2, 4, 8, 0.34, "#16130f"),
+  sniper: spx(2, 1, 8, 3, "#5b2d8a") + spx(2, 4, 8, 2, "#e8c9a0") + eyes("#f2e8d5") + spx(12, 4, 1, 7, "#b58cff") + spx(9, 7, 4, 1, "#f2e8d5"),
+  liquidity: spx(2, 1, 8, 5, "#1b1b22") + eyes("#f2e8d5") + spx(3, 7, 6, 1, "#b58cff") + spx(4, 8, 4, 3, "#1b1b22"),
+};
+Object.assign(HATS, {
+  dev: spx(2, 0, 8, 1, "#d9222f"),
+  holders: spx(1, -1, 10, 2, "#16130f"),
+  bundle: spx(2, -1, 8, 2, "#2c261e") + spx(2, -1, 1, 2, "#a89c86") + spx(9, -1, 1, 2, "#a89c86"),
+  name: spx(2, -1, 8, 1, "#ffcf40") + spx(1, -2, 1, 2, "#ffcf40") + spx(10, -2, 1, 2, "#ffcf40"),
+  safety: spx(2, 0, 8, 1, "#2f6fd0"),
+  scout: "",
+  sniper: spx(2, -1, 8, 2, "#7a5b3a"),
+  liquidity: spx(2, -1, 1, 1, "#1b1b22") + spx(9, -1, 1, 1, "#1b1b22"),
+});
+const SCENES = {
+  scout: '<g class="fx">' + px(58, 14, 12, 12, "#c", "f1") + px(74, 22, 12, 12, "#c", "f2") + px(88, 10, 12, 12, "#c", "f3") + px(61, 17, 6, 6, "#16130f", "f1") + px(77, 25, 6, 6, "#16130f", "f2") + px(91, 13, 6, 6, "#16130f", "f3") + '</g>',
+  bundle: '<g class="fx">' + px(60, 12, 6, 6, "#c") + px(84, 10, 6, 6, "#c") + px(70, 30, 6, 6, "#c") + px(94, 30, 6, 6, "#c") + px(66, 14, 18, 2, "#4a4235") + px(72, 18, 2, 12, "#4a4235") + px(76, 32, 18, 2, "#4a4235") + '<g class="glass">' + px(58, 18, 12, 2, "#f2e8d5") + px(58, 28, 12, 2, "#f2e8d5") + px(56, 20, 2, 8, "#f2e8d5") + px(70, 20, 2, 8, "#f2e8d5") + px(70, 30, 3, 3, "#f2e8d5") + '</g></g>',
+  name: '<g class="fx">' + px(58, 10, 42, 8, "#4a4235") + px(58, 22, 42, 8, "#4a4235") + px(58, 34, 42, 8, "#4a4235") + px(60, 12, 26, 4, "#c", "f1") + px(60, 24, 26, 4, "#c", "f2") + px(60, 36, 26, 4, "#c", "f3") + '</g>',
+  safety: '<g class="fx">' + px(66, 10, 22, 4, "#c", "f1") + px(66, 18, 22, 4, "#c", "f2") + px(66, 26, 22, 4, "#c", "f3") + px(60, 10, 3, 3, "#6fe07a", "f1") + px(60, 18, 3, 3, "#6fe07a", "f2") + px(60, 26, 3, 3, "#6fe07a", "f3") + '</g>',
+  holders: '<g class="fx">' + px(60, 12, 36, 5, "#c", "f1") + px(60, 21, 24, 5, "#c", "f2") + px(60, 30, 12, 5, "#c", "f3") + '</g>',
+  liquidity: '<g class="fx">' + px(60, 8, 4, 32, "#4a4235") + px(92, 8, 4, 32, "#4a4235") + px(60, 40, 36, 4, "#4a4235") + px(64, 30, 28, 10, "#c", "f1") + px(64, 24, 28, 16, "#c", "f2") + px(64, 18, 28, 22, "#c", "f3") + '</g>',
+  sniper: '<g class="fx">' + px(68, 12, 6, 6, "#4a4235") + px(88, 30, 6, 6, "#4a4235") + '<g class="scope">' + px(60, 12, 14, 2, "#c") + px(60, 26, 14, 2, "#c") + px(60, 12, 2, 16, "#c") + px(72, 12, 2, 16, "#c") + px(66, 18, 2, 4, "#c") + '</g></g>',
+  dev: '<g class="bars" data-bars="1"></g><g class="fx">' + px(56, 44, 46, 2, "#4a4235") + '</g>',
+};
+function robotSVG(id) {
+  const body = SPRITE.map((row, y) => [...row].map((ch, x) => {
+    const fill = { "#": "#c", d: "#2c261e", w: "#f2e8d5", k: "#f2e8d5" }[ch];
+    return fill ? spx(x, y, 1, 1, fill) : "";
+  }).join("")).join("");
+  const solid = (body + HATS[id]).replace(/fill="[^"]*"/g, 'fill="currentColor"');
+  const layers = [[3, 0.18], [2, 0.3], [1, 0.48]].map(([d, o], i) => '<g class="layer l' + (3 - i) + '" transform="translate(' + d * 2 + ' ' + d * 2 + ')" opacity="' + o + '">' + solid + '</g>').join("");
+  const svg = px(10, 44, 42, 3, "#000") + '<g class="sprite">' + layers + body +
+    SKIN[id] + '<g class="pupils">' + spx(4, 3, 1, 1, "#16130f") + spx(8, 3, 1, 1, "#16130f") + '</g>' +
+    spx(4, 5, 4, 1, "#c", "mouth-ok") +
+    '<g class="mouth-great">' + spx(4, 5, 4, 1, "#f2e8d5") + spx(3, 4, 1, 1, "#f2e8d5") + spx(8, 4, 1, 1, "#f2e8d5") + '</g>' +
+    '<g class="mouth-worry">' + spx(4, 5, 1, 1, "#ffcf40") + spx(5, 4, 1, 1, "#ffcf40") + spx(6, 5, 1, 1, "#ffcf40") + spx(7, 4, 1, 1, "#ffcf40") + '</g>' +
+    '<g class="mouth-sad">' + spx(4, 4, 4, 1, "#ff5c4d") + spx(3, 5, 1, 1, "#ff5c4d") + spx(8, 5, 1, 1, "#ff5c4d") + '</g>' +
+    '<g class="brows">' + spx(2, 1, 2, 1, "#ff5c4d") + spx(4, 2, 1, 1, "#ff5c4d") + spx(8, 1, 2, 1, "#ff5c4d") + spx(7, 2, 1, 1, "#ff5c4d") + '</g>' +
+    spx(2, 2, 3, 2, "#2c261e", "lid") + spx(7, 2, 3, 2, "#2c261e", "lid") +
+    spx(12, 0, 1, 2, "#7fd4ff", "sweat") + HATS[id] +
+    '<g class="arms-down">' + spx(1, 8, 2, 1, "#c") + spx(9, 8, 2, 1, "#c") + '</g>' +
+    '<g class="arms-up">' + spx(1, 6, 2, 1, "#c") + spx(0, 4, 1, 2, "#c") + spx(9, 6, 2, 1, "#c") + spx(11, 4, 1, 2, "#c") + '</g></g>' +
+    '<g class="cloud">' + px(40, 3, 14, 5, "#8b8476") + px(43, 0, 8, 3, "#8b8476") + '</g>' + px(42, 10, 2, 4, "#7fd4ff", "rain") + px(47, 12, 2, 4, "#7fd4ff", "rain r2") + px(51, 9, 2, 4, "#7fd4ff", "rain r3") +
+    '<g class="siren">' + px(44, 2, 8, 6, "#ff5c4d") + px(42, 8, 12, 2, "#f2e8d5") + px(40, 0, 2, 2, "#ff5c4d") + px(54, 0, 2, 2, "#ff5c4d") + '</g>' +
+    px(2, 6, 3, 3, "#ffcf40", "spark") + px(44, 4, 3, 3, "#ffcf40", "spark") + px(48, 26, 3, 3, "#ffcf40", "spark");
+  return ('<svg viewBox="0 0 104 48" aria-hidden="true">' + svg + SCENES[id] + '</svg>').replaceAll('"#c"', '"currentColor"');
+}
+Object.assign(AGENTS.dev, { title: "Iron Man · Dev ATHs" });
+Object.assign(AGENTS.holders, { title: "Hulk · Holders" });
+Object.assign(AGENTS.bundle, { title: "Dr. Strange · Bundles" });
+Object.assign(AGENTS.name, { title: "Loki · Same Names" });
+Object.assign(AGENTS.safety, { title: "Captain America · Safety" });
+Object.assign(AGENTS.scout, { title: "Spider-Man · Socials" });
+Object.assign(AGENTS.sniper, { title: "Hawkeye · Snipers" });
+Object.assign(AGENTS.liquidity, { title: "Black Panther · Liquidity" });
+const bots = {};
+function buildLab() {
+  buildBoard();
+  // Short cabinets share columns; the long token lists get one each.
+  const columns = [0, 1, 2, 3].map(() => { const c = document.createElement("div"); c.className = "stack"; $("lab").append(c); return c; });
+  const COLUMN = { safety: 0, scout: 0, sniper: 0, bundle: 1, holders: 1, liquidity: 1, name: 2, dev: 3 };
+  Object.entries(AGENTS).forEach(([id, agent]) => {
+    const cabinet = document.createElement("div");
+    cabinet.className = "cabinet c-" + id;
+    const el = document.createElement("div");
+    el.className = "bot"; el.dataset.agent = id;
+    el.style.color = ""; el.innerHTML = '<div class="bot-head"><span class="t"></span><span class="bot-time"></span><button type="button" class="bot-fold" aria-expanded="true">−</button></div>' + robotSVG(id).replace("<svg ", '<svg style="color:var(--c)" ') + '<div class="bot-find"></div><div class="bot-msg"></div><div class="bot-bar unknown"><i></i></div><div class="bot-quip"></div><div class="bot-feed" aria-hidden="true"></div>';
+    el.querySelector(".t").textContent = agent.title;
+    cabinet.append(el);
+    agent.panels.forEach(panel => cabinet.append($(panel)));
+    columns[COLUMN[id]].append(cabinet);
+    bots[id] = { el, msg: el.querySelector(".bot-msg"), find: el.querySelector(".bot-find"), quip: el.querySelector(".bot-quip"), feed: el.querySelector(".bot-feed"), time: el.querySelector(".bot-time"), bar: el.querySelector(".bot-bar"), fill: el.querySelector(".bot-bar i"), began: 0, ended: 0, state: "idle" };
+    bots[id].msg.textContent = agent.idle;
+    bots[id].cabinet = cabinet;
+    const fold = el.querySelector(".bot-fold");
+    fold.setAttribute("aria-label", "Collapse " + agent.title);
+    fold.addEventListener("click", () => setShut(id, !cabinet.classList.contains("shut")));
+    bots[id].pod = addPod(id, agent);
+  });
+  renderBoard();
+}
+// The board sums up every bot and jumps to its cabinet. Flags come from the moods the results set.
+function buildBoard() {
+  const board = document.createElement("section");
+  board.className = "board";
+  board.setAttribute("aria-label", "Bot summary");
+  board.innerHTML = '<div class="board-top"><span class="board-score" id="boardScore"></span><span class="board-counts" id="boardCounts"></span><div class="board-track"><i id="boardFill"></i></div><button type="button" class="board-filter" id="boardFilter" aria-pressed="false">Flags only</button></div><div class="board-grid" id="boardGrid"></div>';
+  $("lab").before(board);
+  $("boardFilter").addEventListener("click", () => setFlagsOnly(!$("lab").classList.contains("flags-only")));
+}
+function addPod(id, agent) {
+  const pod = document.createElement("button");
+  pod.type = "button";
+  pod.className = "pod c-" + id;
+  pod.dataset.agent = id;
+  pod.innerHTML = '<i></i><b></b><span></span>';
+  pod.querySelector("b").textContent = agent.title.split(" · ")[0];
+  pod.addEventListener("click", () => {
+    const cabinet = bots[id].cabinet;
+    setFlagsOnly(false);
+    setShut(id, false);
+    cabinet.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion:reduce)").matches ? "auto" : "smooth" });
+    cabinet.classList.remove("flash");
+    void cabinet.offsetWidth;
+    cabinet.classList.add("flash");
+  });
+  $("boardGrid").append(pod);
+  return pod;
+}
+function setShut(id, shut) {
+  const b = bots[id], fold = b.el.querySelector(".bot-fold");
+  b.cabinet.classList.toggle("shut", shut);
+  fold.textContent = shut ? "+" : "−";
+  fold.setAttribute("aria-expanded", String(!shut));
+}
+function setFlagsOnly(on) {
+  $("lab").classList.toggle("flags-only", on);
+  $("boardFilter").setAttribute("aria-pressed", String(on));
+}
+function botSeverity(b) {
+  if (b.state === "failed") return "failed";
+  if (b.state !== "done") return "";
+  const mood = [...b.el.classList].find(c => c.startsWith("mood-"));
+  return mood ? mood.slice(5) : "ok";
+}
+function renderBoard() {
+  const list = Object.values(bots);
+  let flags = 0, clear = 0, finished = 0;
+  list.forEach(b => {
+    const severity = botSeverity(b), working = b.state === "working" || b.state === "retry";
+    if (severity) finished++;
+    if (severity === "great") clear++;
+    const flagged = ["worry", "bad", "alarm", "failed"].includes(severity);
+    if (flagged) flags++;
+    b.cabinet.className = b.cabinet.className.replace(/\s*(sev-\w+|running|flagged)/g, "") + (severity ? " sev-" + severity : "") + (working ? " running" : "") + (flagged ? " flagged" : "");
+    b.pod.className = b.pod.className.replace(/\s*(sev-\w+|working)/g, "") + (severity ? " sev-" + severity : "") + (working ? " working" : "");
+    const text = working ? "Scanning…" : b.find.textContent || (b.state === "idle" ? "Idle" : "Done");
+    const span = b.pod.querySelector("span");
+    span.textContent = text;
+    b.pod.title = text;
+  });
+  $("boardScore").textContent = finished + " / " + list.length + " bots done";
+  $("boardCounts").innerHTML = '<b class="f">' + flags + "</b> flagged · " + '<b class="c">' + clear + "</b> clear";
+  $("boardFill").style.width = finished / list.length * 100 + "%";
+  $("boardFilter").disabled = !flags;
+  if (!flags) setFlagsOnly(false);
+}
+function setBot(id, state) { const b = bots[id]; b.state = state; b.el.classList.remove("working", "retry", "done", "failed"); if (state !== "idle") b.el.classList.add(state === "retry" ? "working" : state); if (state === "retry") b.el.classList.add("retry"); renderBoard(); }
+function botProgress(id, done, total) {
+  const b = bots[id];
+  b.bar.classList.toggle("unknown", !total);
+  b.fill.style.width = total ? Math.min(100, done / total * 100) + "%" : "";
+}
+function botMsg(id, text) { bots[id].msg.textContent = text; }
+function tabTitle(text) { document.title = text + " · Token Lab"; }
+const VOICE = {
+  dev: { great: "I love you 3000. This dev has real peaks!", ok: "Not bad. Not Stark, but not bad.", bad: "JARVIS, power down. This track record hurts.", worry: "JARVIS, the data's incomplete. This result is partial." },
+  holders: { great: "HULK HAPPY! BAGS SPREAD OUT!", ok: "Hulk okay. Some big bags.", worry: "HULK SMASH BIG BAGS! TOO CONCENTRATED!" },
+  bundle: { great: "I checked every timeline. Launch looks clean.", worry: "Something in this timeline looks off.", alarm: "We were in the wrong timeline! BUNDLED!" },
+  name: { great: "Only one of me? How disappointing. No copies found!", ok: "A few variants. Amateurs.", worry: "So many variants! Which one is real?!" },
+  safety: { great: "Mint looks clean, soldier. Other risks still apply!", alarm: "HYDRA! Danger in the mint! Stand down!" },
+  scout: { great: "Big audience! Check it's really theirs, though!", ok: "Friendly neighborhood socials. Nothing wild.", worry: "My spider-sense says check this one.", bad: "No socials. Mr. Stark, I don't feel so good…" },
+  sniper: { great: "Clear skies. Nobody jumped in early!", ok: "Just a couple of quick hands.", worry: "Fast fingers out there. Eyes up.", alarm: "Snipers everywhere! And I'm the guy with a bow!" },
+  liquidity: { great: "The vault is full. Wakanda forever!", ok: "Still on the curve. We watch and wait.", worry: "The reserves run shallow here.", bad: "The vault is nearly empty." },
+};
+function finishBot(id, ok, finding, text) {
+  const moodName = [...bots[id].el.classList].find(c => c.startsWith("mood-"));
+  if (ok && moodName && VOICE[id] && VOICE[id][moodName.slice(5)]) text = VOICE[id][moodName.slice(5)];
+  const b = bots[id];
+  if (b.state === "done" || b.state === "failed") return;
+  b.ended = Date.now();
+  setBot(id, ok ? "done" : "failed");
+  if (Object.values(bots).every(x => x.state === "done" || x.state === "failed")) tabTitle("✓ " + (lastSymbol || "Done"));
+  if (finding !== undefined) b.find.textContent = finding;
+  botMsg(id, text);
+  tickLab();
+  renderBoard();
+}
+function tickLab() {
+  Object.values(bots).forEach(b => {
+    if (b.began) b.time.textContent = (((b.ended || Date.now()) - b.began) / 1000).toFixed(1) + "s";
+  });
+}
+setInterval(tickLab, 100);
+const QUIPS = {
+  scout: ["Stalking the timeline…", "Reading the replies. Regretting it.", "Counting followers on my fingers. I have 2.", "Asking the Telegram admin nicely…", "Pretending to understand memes…"],
+  bundle: ["Dusting wallets for fingerprints…", "Who bought first? Suspicious.", "Interrogating the launch block…", "Following the money in a tiny hat…", "This wallet won't make eye contact…"],
+  name: ["Have you seen this name before?", "Checking for identical twins…", "Another one? Really?", "Flipping through the token phone book…", "Copy. Paste. Copy. Paste…"],
+  safety: ["Checking under the hood…", "Tapping the mint with a tiny hammer…", "Reading the fine print. All of it.", "Looking for hidden trapdoors…"],
+  holders: ["Counting everyone's bags…", "Who's holding the most? Nosy, I know.", "Sorting whales from shrimp…", "Weighing bags on a very small scale…"],
+  liquidity: ["Dipping a toe in the pool…", "Measuring the depth with a stick…", "Is there a lifeguard on duty?", "Checking the exit doors…"],
+  sniper: ["Adjusting the scope. Wind: bearish.", "Counting who bought in the first second…", "These bots never sleep. I checked.", "Spotted one! No wait, that's a bird.", "Who has this fast an internet?"],
+  dev: ["Digging through the dev's old bags…", "Looking for one good chart…", "Reading the dev's diary…", "Measuring peaks with a ruler…", "Please, one green candle…"],
+};
+Object.assign(QUIPS, {
+  dev: ["JARVIS, pull the dev's history.", "I've seen better charts on my toaster.", "Running 14 diagnostics. Looking good doing it.", "Sometimes you gotta run before you can pump."],
+  holders: ["HULK COUNT BAGS.", "WHY SO MANY WALLETS?!", "Hulk no like big whale.", "Puny holders. Hulk sort."],
+  bundle: ["I've looked at 14 million wallets…", "Opening a portal to the launch block…", "Dormammu, I've come to audit.", "We're in the endgame of this block now."],
+  name: ["I am burdened with glorious copycats.", "Is it the real one? Or a variant?", "Kneel before the original token!", "Your savior is here. Probably a fake, though."],
+  safety: ["I can do this all day.", "Inspecting the mint. It's what a soldier does.", "Language! Checking the fine print.", "On your left. Checking authorities."],
+  scout: ["With great hype comes great responsibility.", "Swinging through the timeline…", "My spider-sense is tingling!", "Hey, everyone! Reading the replies!"],
+  sniper: ["I never miss. Almost.", "Spotting who shot first…", "I've got a bow and these guys have bots.", "Nocking an arrow. Counting wallets."],
+  liquidity: ["Checking the vault. Wakanda forever.", "Measuring the reserves in silence…", "In times of crisis, the wise build pools.", "We do not freeze when we hear the sell."],
+});
+setInterval(() => {
+  Object.entries(bots).forEach(([id, b]) => {
+    if (b.state !== "working" && b.state !== "retry") return;
+    b.quipAt = ((b.quipAt ?? Math.floor(Math.random() * QUIPS[id].length)) + 1) % QUIPS[id].length;
+    b.quip.textContent = QUIPS[id][b.quipAt];
+  });
+}, 2200);
+// Banter after a result. Lines are picked by the bot's mood, so they never contradict its finding.
+const CHATTER = {
+  dev: ["Old ATHs don't pay rent.", "Past pumps. Zero promises.", "Devs own more than one wallet.", "Great résumé. Check the exits."],
+  holders: ["ONE GUY, TEN WALLETS. HULK KNOW.", "TOP 10 SELL, CHART SMASH.", "HOLDER COUNT EASY TO FAKE.", "HULK COUNT. HULK NOT ADVISE."],
+  bundle: ["Bundlers split wallets. Adorable.", "Clean block, not clean hands.", "Fresh wallets. Very innocent.", "Bundles can land after block one."],
+  name: ["Check the mint, not the name.", "Names are free. So are copies.", "Imitation: sincerest form of rug.", "Copycats love a trending name."],
+  safety: ["Clean mint can still rug.", "Revoked mint, not a promise.", "Safe code. People sold separately.", "Freeze off means sells can't be frozen."],
+  scout: ["Followers are for sale, you know.", "Check who actually runs the account.", "Nice website. Took ten minutes.", "Socials can vanish overnight."],
+  sniper: ["Fast fingers, faster exits.", "Snipers rarely hold for the lore.", "Slow snipers exist. Rude, I know.", "Early wallets can sell any time."],
+  liquidity: ["Liquidity can leave. Check again.", "Market cap isn't cash.", "Thin pools make big candles.", "Your exit needs a buyer."],
+};
+const MOOD_CHATTER = {
+  great: ["Looks fine. Don't get cocky.", "One good sign. Just one.", "Nice. Now check the others."],
+  ok: ["Thrilling. Truly average.", "Not great, not terrible."],
+  worry: ["I'd look twice at this.", "Not panicking. Just pointing.", "Bold of you to skip this."],
+  bad: ["Well, that was rough.", "I've seen happier numbers.", "Great, if you like pain."],
+  alarm: ["Read this one again. Slowly.", "Red means red."],
+  failed: ["No result. Don't read into it.", "Check failed. Try again shortly."],
+};
+function botChatter(id, b) {
+  if (b.state === "failed") return MOOD_CHATTER.failed;
+  const mood = [...b.el.classList].find(c => c.startsWith("mood-"));
+  return [...CHATTER[id], ...((mood && MOOD_CHATTER[mood.slice(5)]) || [])];
+}
+setInterval(() => {
+  const finished = Object.entries(bots).filter(([, b]) => b.state === "done" || b.state === "failed");
+  if (!finished.length) return;
+  const [id, b] = finished[Math.floor(Math.random() * finished.length)];
+  const lines = botChatter(id, b).filter(l => l !== b.lastChat);
+  b.lastChat = lines[Math.floor(Math.random() * lines.length)];
+  const line = document.createElement("div");
+  line.textContent = b.lastChat;
+  b.feed.replaceChildren(line);
+}, 1500);
+function setMood(id, mood) {
+  const c = bots[id].el.classList;
+  c.remove("mood-great", "mood-ok", "mood-worry", "mood-bad", "mood-alarm");
+  if (mood) c.add("mood-" + mood);
+  renderBoard();
+}
+// Moods are a rough read of the real result, with thresholds chosen by hand, not advice.
+function socialMood(e) {
+  const x = e.x, any = e.twitter || e.telegram || e.website;
+  if (!any && !e.linksComplete) return ["worry", "The metadata host won't answer. Socials may exist!"];
+  if (!any) return ["bad", "No socials. Not even a website. I'm so alone."];
+  if (x && !x.error && (x.followers || 0) >= 10000) return ["great", "Big audience! Check it's really theirs, though."];
+  if (x && !x.error && x.kind === "profile" && (x.followers || 0) < 100) return ["worry", "Fewer followers than my toaster."];
+  return ["ok", "Socials found. Nothing wild."];
+}
+function bundleMood(e) {
+  const n = (e.sameBlock || []).length;
+  if (e.verdict === "Likely bundled") return ["alarm", "WEE-OO! " + n + " wallets bought " + pct(e.sameBlockPct) + " in the launch block!"];
+  if (e.verdict === "Possibly bundled") return ["worry", "Hmm. " + n + " early " + (n === 1 ? "wallet looks" : "wallets look") + " a bit too keen."];
+  return ["great", "Clean launch block. Case closed!"];
+}
+function sniperMood(e) {
+  if (e.verdict === "No snipers") return ["great", "Scope is clear. Nobody jumped in early!"];
+  if (e.verdict === "Heavily sniped") return ["alarm", "SNIPERS EVERYWHERE! Take cover!"];
+  if (e.verdict === "Sniped") return ["worry", e.wallets + " early birds with very fast fingers."];
+  return ["ok", "Just a couple of quick hands."];
+}
+function safetyMood(e) {
+  return e.verdict === "Red flags" ? ["alarm", "STOP! I found something dangerous in the mint!"] : ["great", "Mint looks clean. Other risks still apply!"];
+}
+function holdersMood(e) {
+  if (e.verdict === "Concentrated") return ["worry", "Top wallets hold " + pct(e.top10) + ". Big bags, big risk."];
+  if (e.verdict === "Moderate") return ["ok", "Some big bags, nothing outrageous."];
+  return ["great", "Nicely spread out. Everyone gets a slice!"];
+}
+function liquidityMood(e) {
+  if (e.verdict === "Healthy") return ["great", "Plenty of water in this pool!"];
+  if (e.verdict === "On bonding curve") return ["ok", "Still on the curve, " + Math.round(e.curvePct) + "% of the way."];
+  if (e.verdict === "Thin") return ["worry", "Shallow end. Big sells will splash."];
+  return ["bad", "This pool is basically a puddle."];
+}
+function nameMood(e) {
+  if (e.total === 0) return ["great", "One of a kind! No copies found."];
+  if (e.total >= 10) return ["worry", e.total + " copycats?! Which one is real?!"];
+  return ["ok", "A few lookalikes. Could be worse."];
+}
+function devMood() {
+  const others = live.filter(t => !t.pasted && !t.missing);
+  if (!others.length) return ["ok", "No other tokens to judge. Mysterious."];
+  const best = Math.max(...others.map(t => t.ath));
+  if (best >= 100000) return ["great", "This dev has hit " + usd(best) + "! Party time!"];
+  if (best >= 20000) return ["ok", "Best of " + usd(best) + ". Respectable-ish."];
+  return ["bad", "Best of just " + usd(best) + ". I need a moment."];
+}
+function labStart() {
+  tabTitle("Scanning…");
+  Object.keys(bots).forEach(id => {
+    const b = bots[id];
+    b.began = Date.now(); b.ended = 0; b.find.textContent = ""; b.feed.textContent = "";
+    setMood(id, "");
+    b.quip.textContent = QUIPS[id][Math.floor(Math.random() * QUIPS[id].length)];
+    setBot(id, "working");
+    botProgress(id, 0, 0);
+    botMsg(id, "Starting…");
+  });
+  drawBars();
+}
+function drawBars() {
+  const fx = bots.dev.el.querySelector("[data-bars]");
+  fx.textContent = "";
+  const list = live.filter(t => !t.missing).slice(0, 10);
+  const top = Math.max(...list.map(t => Math.log10(t.ath + 1)), 1);
+  list.forEach((t, i) => {
+    const height = Math.max(2, Math.round(Math.log10(t.ath + 1) / top * 34 / 2) * 2);
+    const bar = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    bar.setAttribute("x", 58 + i * 4); bar.setAttribute("y", 44 - height);
+    bar.setAttribute("width", 3); bar.setAttribute("height", height);
+    bar.setAttribute("fill", "currentColor");
+    fx.append(bar);
+  });
+}
+function bestSoFar() {
+  const best = live.filter(t => !t.pasted && !t.missing).sort((a, b) => b.ath - a.ath)[0];
+  return best ? "Best " + usd(best.ath) + " · " + (best.symbol || "?") : "";
+}
+function labEvent(e) {
+  if (e.stage === "dev") { lastSymbol = e.symbol || ""; saveRecent(e.mint, e.symbol); updateSearch(); tabTitle("Scanning " + (e.symbol || "token") + "…"); }
+  if (e.stage === "agent") {
+    const b = bots[e.agent];
+    if (!b || b.state === "done" || b.state === "failed") return;
+    if (e.retry) { setBot(e.agent, "retry"); botMsg(e.agent, e.message); return; }
+    setBot(e.agent, "working");
+    botMsg(e.agent, e.message);
+    botProgress(e.agent, e.done, e.total);
+  } else if (e.stage === "socials") {
+    const x = e.x;
+    const links = [e.twitter && "X", e.telegram && "Telegram", e.website && "Website"].filter(Boolean);
+    let finding = links.length ? links.join(" · ") : e.linksComplete ? "No socials listed" : "Unknown";
+    if (x && x.kind === "status" && !x.error) finding = count(x.views) + " views · " + count(x.followers) + " followers";
+    else if (x && x.kind === "profile" && !x.error) finding = count(x.followers) + " followers";
+    const [mood, line] = socialMood(e);
+    setMood("scout", mood);
+    finishBot("scout", true, finding, x && x.error ? x.error : line);
+  } else if (e.stage === "bundle") {
+    if (e.error) finishBot("bundle", false, "Check failed", e.error);
+    else { const [mood, line] = bundleMood(e); setMood("bundle", mood); finishBot("bundle", true, e.verdict, line); }
+  } else if (e.stage === "safety" || e.stage === "holders" || e.stage === "liquidity") {
+    if (e.error) finishBot(e.stage, false, "Check failed", e.error);
+    else {
+      const [mood, line] = (e.stage === "safety" ? safetyMood : e.stage === "holders" ? holdersMood : liquidityMood)(e);
+      setMood(e.stage, mood);
+      finishBot(e.stage, true, e.verdict, line);
+    }
+  } else if (e.stage === "sniper") {
+    if (e.error) finishBot("sniper", false, "Check failed", e.error);
+    else { const [mood, line] = sniperMood(e); setMood("sniper", mood); finishBot("sniper", true, e.verdict, line); }
+  } else if (e.stage === "samename") {
+    if (e.error) finishBot("name", false, "Check failed", e.error);
+    else { const [mood, line] = nameMood(e); setMood("name", mood); finishBot("name", true, e.total + " same-name", line); }
+  } else if (e.stage === "dev") {
+    botMsg("dev", "Dev found. Reading their wallet…");
+    botProgress("dev", 0, 10);
+  } else if (e.stage === "progress") {
+    if (bots.dev.state !== "retry") setBot("dev", "working");
+    botMsg("dev", e.found + " of 10 tokens · " + e.scanned.toLocaleString() + " transactions read");
+    botProgress("dev", Math.min(e.found, 10), 10);
+  } else if (e.stage === "tokens") {
+    drawBars();
+    bots.dev.find.textContent = bestSoFar();
+    const total = Math.max(devFound + 1, live.length);
+    if (devFound >= 0) { botMsg("dev", "ATHs checked: " + live.length + " of " + total); botProgress("dev", live.length, total); }
+  } else if (e.stage === "scan") {
+    devFound = e.found;
+    botMsg("dev", "Tokens found. Checking ATHs: " + live.length + " of " + (e.found + 1));
+    botProgress("dev", live.length, e.found + 1);
+  } else if (e.stage === "done") {
+    const cut = !e.complete || e.unchecked > 0;
+    drawBars();
+    const [mood, line] = devMood();
+    setMood("dev", cut ? "worry" : mood);
+    finishBot("dev", true, bestSoFar() || "No other tokens", cut ? "Partial result: some tokens or ATHs are missing." : line);
+  } else if (e.stage === "error") {
+    finishBot("dev", false, "Check failed", e.message);
+  }
+}
+let devFound = -1;
+function labEnded(message) {
+  Object.keys(bots).forEach(id => finishBot(id, false, "Stopped", message));
+}
+buildLab();
+
+// Search bar.
+const ADDRESS = /[1-9A-HJ-NP-Za-km-z]{32,44}/;
+const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+function isKey(text) {
+  const bytes = [];
+  for (const ch of text) {
+    let carry = B58.indexOf(ch);
+    if (carry < 0) return false;
+    for (let i = 0; i < bytes.length; i++) { carry += bytes[i] * 58; bytes[i] = carry & 255; carry >>= 8; }
+    while (carry) { bytes.push(carry & 255); carry >>= 8; }
+  }
+  for (const ch of text) { if (ch !== "1") break; bytes.push(0); }
+  return bytes.length === 32;
+}
+function readAddress() {
+  const match = $("ca").value.trim().match(ADDRESS);
+  return match && isKey(match[0]) ? match[0] : null;
+}
+function updateSearch() {
+  const text = $("ca").value.trim(), address = readAddress(), form = $("searchForm");
+  form.classList.toggle("valid", !!address);
+  form.classList.toggle("invalid", !!text && !address);
+  $("clearBtn").hidden = !text;
+  $("slashHint").hidden = !!text;
+  $("caState").textContent = !text ? "" : address ? (lastSymbol && address === lastCA ? lastSymbol : "Valid address") : "Not a Solana address";
+}
+let lastSymbol = "", recentIndex = -1;
+function loadRecent() { try { return (JSON.parse(localStorage.getItem("recent")) || []).filter(r => r.mint !== DONATE_WALLET); } catch { return []; } }
+function saveRecent(mint, symbol) {
+  const list = [{ mint, symbol, at: new Date().toISOString() }, ...loadRecent().filter(r => r.mint !== mint)].slice(0, 8);
+  try { localStorage.setItem("recent", JSON.stringify(list)); } catch {}
+}
+function hideRecent() { $("recent").hidden = true; $("ca").setAttribute("aria-expanded", "false"); recentIndex = -1; }
+function showRecent() {
+  const list = loadRecent(), box = $("recent");
+  box.textContent = "";
+  if (!list.length || $("ca").value.trim()) return hideRecent();
+  const head = document.createElement("li"); head.className = "head"; head.textContent = "Recent"; box.append(head);
+  list.forEach(r => {
+    const li = document.createElement("li"); li.setAttribute("role", "option");
+    const name = document.createElement("b"); name.textContent = r.symbol || "?";
+    const addr = document.createElement("span"); addr.className = "addr"; addr.textContent = r.mint;
+    const when = document.createElement("span"); when.textContent = ago(r.at);
+    li.append(name, addr, when);
+    li.addEventListener("mousedown", e => { e.preventDefault(); hideRecent(); runCopied(r.mint); });
+    box.append(li);
+  });
+  box.hidden = false;
+  $("ca").setAttribute("aria-expanded", "true");
+}
+$("ca").addEventListener("input", () => { lastSymbol = ""; updateSearch(); showRecent(); });
+$("ca").addEventListener("focus", showRecent);
+$("ca").addEventListener("blur", hideRecent);
+$("ca").addEventListener("keydown", e => {
+  const items = [...$("recent").querySelectorAll('li[role="option"]')];
+  if (e.key === "Escape") {
+    if (!$("recent").hidden) hideRecent();
+    else { $("ca").value = ""; lastCA = ""; lastSymbol = ""; updateSearch(); showRecent(); }
+  } else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && items.length && !$("recent").hidden) {
+    e.preventDefault();
+    recentIndex = (recentIndex + (e.key === "ArrowDown" ? 1 : items.length - 1 + (recentIndex < 0 ? 1 : 0))) % items.length;
+    items.forEach((li, i) => li.classList.toggle("on", i === recentIndex));
+  } else if (e.key === "Enter" && recentIndex >= 0 && items[recentIndex]) {
+    e.preventDefault();
+    const mint = items[recentIndex].querySelector(".addr").textContent;
+    hideRecent(); runCopied(mint);
+  }
+});
+$("searchForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const address = readAddress();
+  updateSearch();
+  if (address) { hideRecent(); runCopied(address); }
+  else $("ca").focus();
+});
+$("clearBtn").addEventListener("click", () => { $("ca").value = ""; lastCA = ""; lastSymbol = ""; updateSearch(); $("ca").focus(); });
+$("pasteBtn").addEventListener("click", async () => {
+  try {
+    $("ca").value = (await navigator.clipboard.readText()).trim();
+    const address = readAddress();
+    updateSearch();
+    if (address) runCopied(address);
+  } catch {
+    status("The browser blocked clipboard access. Press Ctrl+V in the search bar instead.", true);
+    $("ca").focus();
+  }
+});
+document.addEventListener("keydown", e => {
+  const typing = /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
+  if (e.key === "/" && !typing && !e.ctrlKey && !e.metaKey) { e.preventDefault(); $("ca").focus(); $("ca").select(); }
+});
+updateSearch();
+
+// Deadpool begs for donations. It's all jokes, and nothing is locked behind paying.
+const PLEAS = [
+  ["Fourth wall", "Yes, you, reading this. The dev wrote this line. Pay him."],
+  ["Maximum effort", "Maximum effort. Minimum budget. Spare some SOL?"],
+  ["Funny", "I run on chimichangas and one (1) SOL-shaped dream."],
+  ["Sad", "The other bots get results. I just get ignored. *sniff*"],
+  ["Honest", "This tool is free. My API bills disagree."],
+  ["Dramatic", "Tell my motherboard... I tried..."],
+  ["Bargaining", "0.01 SOL and I'll stop crying. For about a minute."],
+  ["Flattery", "You look like someone with excellent bags and a kind heart."],
+  ["Guilt", "You scanned 40 tokens. I counted. I'm not mad. Just hungry."],
+  ["Salesman", "Limited offer: donate today, feel smug forever."],
+  ["Philosophy", "If a bot begs and no one donates, does it still sniff?"],
+  ["Trader logic", "You just aped $500 into a dog. I'm asking for $1."],
+  ["Puppy eyes", "Look at my eyes. They are two pixels of pure sorrow."],
+  ["Rug-free", "Unlike that last token, I'll still be here tomorrow."],
+];
+let pleaIndex = Math.floor(Math.random() * PLEAS.length), begHold = 0;
+function showPlea() {
+  if (Date.now() < begHold) return;
+  pleaIndex = (pleaIndex + 1) % PLEAS.length;
+  $("begTitle").textContent = "Deadpool · " + PLEAS[pleaIndex][0];
+  $("begLine").textContent = PLEAS[pleaIndex][1];
+}
+function begReact(cls, title, line) {
+  begHold = Date.now() + 8000;
+  $("begBtn").classList.remove("party", "sulk");
+  if (cls) $("begBtn").classList.add(cls);
+  $("begTitle").textContent = title;
+  $("begLine").textContent = line;
+  setTimeout(() => { $("begBtn").classList.remove(cls); }, 8000);
+}
+function toggleDonate(open) {
+  $("donateBox").hidden = !open;
+  $("begBtn").setAttribute("aria-expanded", open);
+}
+const payLink = amount => "solana:" + DONATE_WALLET + "?amount=" + encodeURIComponent(amount) + "&label=Token%20Lab&message=Thanks%20for%20Token%20Lab";
+$("donateWallet").textContent = DONATE_WALLET.slice(0, 6) + "…" + DONATE_WALLET.slice(-6);
+$("donateWallet").title = DONATE_WALLET;
+["0.01", "0.05", "0.1", "1"].reverse().forEach(amount => {
+  const a = document.createElement("a");
+  a.href = payLink(amount);
+  a.textContent = amount + " SOL";
+  a.addEventListener("click", () => begReact("party", "Deadpool · Hope!", "You clicked! My tiny heart is doing a backflip!"));
+  $("donateAmounts").prepend(a);
+});
+$("donateCustomLink").addEventListener("click", e => {
+  const amount = Number($("donateCustom").value);
+  if (!(amount > 0)) { e.preventDefault(); $("donateCustom").focus(); return; }
+  $("donateCustomLink").href = payLink(String(amount));
+  begReact("party", "Deadpool · Hope!", "Any amount! You remembered! I'm not crying, you're crying.");
+});
+$("begBtn").addEventListener("click", () => toggleDonate($("donateBox").hidden));
+async function copyDonateWallet(button) {
+  const label = button.textContent;
+  let copied = false;
+  try {
+    await navigator.clipboard.writeText(DONATE_WALLET);
+    copied = true;
+  } catch {
+    const box = document.createElement("textarea");
+    box.value = DONATE_WALLET;
+    document.body.append(box);
+    box.select();
+    try { copied = document.execCommand("copy"); } catch {}
+    box.remove();
+  }
+  button.textContent = copied ? "Copied" : "Copy failed";
+  if (copied) begReact("party", "Deadpool · Hope!", "It's on your clipboard! So close! Please don't paste a dog coin instead.");
+  setTimeout(() => { button.textContent = label; }, 2500);
+}
+$("donateCopy").addEventListener("click", () => copyDonateWallet($("donateCopy")));
+$("quickCopy").addEventListener("click", () => copyDonateWallet($("quickCopy")));
+$("donateNo").addEventListener("click", () => {
+  toggleDonate(false);
+  begReact("sulk", "Deadpool · Fine.", "It's fine. I'll just sit here. In the dark. Scanning for free.");
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("donateBox").hidden) { toggleDonate(false); $("begBtn").focus(); } });
+document.addEventListener("click", e => { if (!$("donateBox").hidden && !e.target.closest(".donate")) toggleDonate(false); });
+showPlea();
+setInterval(showPlea, 6000);
+
+function runCopied(address) {
+  // Copying the donation wallet shouldn't start a token lookup.
+  if (address === DONATE_WALLET) return;
+  $("ca").value = address;
+  lastCA = address;
+  updateSearch();
+  lookup(address);
+}
+
+// Locally the program watches the clipboard. Hosted, only the browser can, and only when it has
+// permission and the tab is in front, so it checks each time you come back to the tab.
+const COPIED = /^\s*(?:https?:\/\/\S*?)?([1-9A-HJ-NP-Za-km-z]{32,44})\S*\s*$/;
+async function checkBrowserClipboard() {
+  if (!navigator.clipboard || !navigator.clipboard.readText) return;
+  try {
+    const match = (await navigator.clipboard.readText()).match(COPIED);
+    if (match && match[1] !== lastCA) runCopied(match[1]);
+  } catch {}
+}
+
+api("/api/config").then(r => r.json()).then(config => {
+  if (config.hosted) {
+    window.addEventListener("focus", checkBrowserClipboard);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) checkBrowserClipboard(); });
+  } else {
+    new EventSource(API_BASE + "/api/clipboard").onmessage = e => runCopied(e.data);
+  }
+}).catch(() => {});
+</script>
+</body>
+</html>

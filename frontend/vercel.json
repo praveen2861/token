@@ -1,0 +1,6 @@
+{
+  "framework": null,
+  "installCommand": "",
+  "buildCommand": "echo \"window.API_BASE = '$API_URL';\" > config.js",
+  "outputDirectory": "."
+}
